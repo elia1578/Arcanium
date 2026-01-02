@@ -1011,7 +1011,7 @@ local PlayerTab = Window:CreateTab("Player", "hand-metal")
 
     local WSSlider = PlayerTab:CreateSlider({
         Name = "WalkSpeed Value",
-        Range = {16, 250},
+        Range = {16, 150},
         Increment = 1,
         Suffix = " Speed",
         CurrentValue = 16,
@@ -1038,7 +1038,7 @@ local PlayerTab = Window:CreateTab("Player", "hand-metal")
 
     local JPSlider = PlayerTab:CreateSlider({
         Name = "JumpPower Value",
-        Range = {50, 500},
+        Range = {50, 300},
         Increment = 1,
         Suffix = " Power",
         CurrentValue = 50,
