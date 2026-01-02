@@ -143,7 +143,7 @@ if game.PlaceId == 10595058975 then
 	-- GLOBAL SETTINGS
 	-- =========================================================
 	_G.AD_ON = _G.AD_ON or false
-	_G.AD_METHOD = _G.AD_METHOD or "Semi-Legit"
+	_G.AD_METHOD = _G.AD_METHOD or "Legit"
 	_G.AD_CHANCE = _G.AD_CHANCE or 100 
 
 	local hasDodgedThisCycle = false -- Prevents spamming
@@ -947,20 +947,106 @@ if game.PlaceId == 10595058975 then
 		end
 	end)
 
-	local PlayerTab = Window:CreateTab("Player", "hand-metal")
-	PlayerTab:CreateSection("Player Main")
-	PlayerTab:CreateLabel("Tuff player stuff")
+local PlayerTab = Window:CreateTab("Player", "hand-metal")
+    PlayerTab:CreateSection("Player Main")
+    PlayerTab:CreateLabel("Tuff player stuff")
 
-	local HNToggle = PlayerTab:CreateToggle({
-		Name = "Hide Names",
-		CurrentValue = false,
-		Flag = "HN",
-		Callback = function(Value)
-			game:GetService("Players").LocalPlayer.PlayerGui.HUD.Holder.CharacterName.Visible = not Value
-			game:GetService("Players").LocalPlayer.PlayerGui.HUD.ServerInfo.Visible = not Value
-			game:GetService("Players").LocalPlayer.PlayerGui.HUD.ServerInfo["Age/Region"].Visible = not Value
-		end,
-	})
+    -- =========================================================
+    -- SETTINGS & VARIABLES
+    -- =========================================================
+    local WS_Enabled = false
+    local WS_Value = 16 -- Default Roblox Speed
+    local JP_Enabled = false
+    local JP_Value = 50 -- Default Roblox Jump
+
+    -- Loop to keep values applied even after death/respawn
+    game:GetService("RunService").Heartbeat:Connect(function()
+        local char = game:GetService("Players").LocalPlayer.Character
+        local hum = char and char:FindFirstChildOfClass("Humanoid")
+        if hum then
+            if WS_Enabled then
+                hum.WalkSpeed = WS_Value
+            end
+            if JP_Enabled then
+                hum.JumpPower = JP_Value
+                hum.UseJumpPower = true -- Ensures game uses Power instead of Height
+            end
+        end
+    end)
+
+    -- =========================================================
+    -- UI COMPONENTS
+    -- =========================================================
+
+    local HNToggle = PlayerTab:CreateToggle({
+        Name = "Hide Names",
+        CurrentValue = false,
+        Flag = "HN",
+        Callback = function(Value)
+            local HUD = game:GetService("Players").LocalPlayer.PlayerGui:FindFirstChild("HUD")
+            if HUD then
+                HUD.Holder.CharacterName.Visible = not Value
+                HUD.ServerInfo.Visible = not Value
+                HUD.ServerInfo["Age/Region"].Visible = not Value
+            end
+        end,
+    })
+
+    PlayerTab:CreateSection("Movement")
+
+    -- WalkSpeed Slider & Toggle
+    local WSToggle = PlayerTab:CreateToggle({
+        Name = "Enable WalkSpeed",
+        CurrentValue = false,
+        Flag = "WSToggle",
+        Callback = function(Value)
+            WS_Enabled = Value
+            -- Reset to default if disabled
+            if not Value then
+                local hum = game:GetService("Players").LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
+                if hum then hum.WalkSpeed = 16 end
+            end
+        end,
+    })
+
+    local WSSlider = PlayerTab:CreateSlider({
+        Name = "WalkSpeed Value",
+        Range = {16, 250},
+        Increment = 1,
+        Suffix = " Speed",
+        CurrentValue = 16,
+        Flag = "WSVal",
+        Callback = function(Value)
+            WS_Value = Value
+        end,
+    })
+
+    -- JumpPower Slider & Toggle
+    local JPToggle = PlayerTab:CreateToggle({
+        Name = "Enable JumpPower",
+        CurrentValue = false,
+        Flag = "JPToggle",
+        Callback = function(Value)
+            JP_Enabled = Value
+            -- Reset to default if disabled
+            if not Value then
+                local hum = game:GetService("Players").LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
+                if hum then hum.JumpPower = 50 end
+            end
+        end,
+    })
+
+    local JPSlider = PlayerTab:CreateSlider({
+        Name = "JumpPower Value",
+        Range = {50, 500},
+        Increment = 1,
+        Suffix = " Power",
+        CurrentValue = 50,
+        Flag = "JPVal",
+        Callback = function(Value)
+            JP_Value = Value
+        end,
+    })
 
 	local DupeTab = Window:CreateTab("Duplication", "copy")
 	DupeTab:CreateSection("Item Duper Settings")
