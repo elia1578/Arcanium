@@ -307,7 +307,7 @@ if game.PlaceId == 10595058975 then
 								activeQTEs[ui.Name] = true -- Mark as "processing"
 								
 								task.spawn(function()
-									local delayTime = math.random(100, 200) / 100 -- Random 1.0 to 2.0
+									local delayTime = math.random(250, 400) / 100 -- Random 1.0 to 2.0
 									task.wait(delayTime)
 									
 									-- Check if QTE is still active/visible after the wait
@@ -761,16 +761,51 @@ if game.PlaceId == 10595058975 then
 				return false
 			end
 
-			local function isOnCooldown(btn)
-				local cd = btn and btn:FindFirstChild("CD")
-				return (cd and cd:IsA("GuiObject") and cd.Visible) or false
-			end
+			-- ===== helpers =====
+            local function getPlayerEnergy()
+                local living = workspace:FindFirstChild("Living")
+                local charModel = living and living:FindFirstChild(player.Name)
+                local status = charModel and charModel:FindFirstChild("Status")
+                local energyValue = status and status:FindFirstChild("Energy")
+                
+                return energyValue and energyValue.Value or 0
+            end
 
-			local function canUse(btn)
-				if not btn or not btn:IsA("GuiButton") then return false end
-				if isOnCooldown(btn) then return false end
-				return true
-			end
+            local function getAbilityCost(btn)
+                if not btn then return 0 end
+                -- Path: btn -> Cost -> TextLabel
+                local costContainer = btn:FindFirstChild("Cost")
+                local textLabel = costContainer and costContainer:FindFirstChild("TextLabel")
+                
+                if textLabel and textLabel:IsA("TextLabel") then
+                    -- tonumber handles the string conversion
+                    return tonumber(textLabel.Text) or 0
+                end
+                return 0
+            end
+
+            local function isOnCooldown(btn)
+                local cd = btn and btn:FindFirstChild("CD")
+                return (cd and cd:IsA("GuiObject") and cd.Visible) or false
+            end
+
+            local function canUse(btn)
+                if not btn or not btn:IsA("GuiButton") then return false end
+                
+                -- 1. Check Cooldown
+                if isOnCooldown(btn) then return false end
+                
+                -- 2. Check Energy Requirement
+                local currentEnergy = getPlayerEnergy()
+                local requiredEnergy = getAbilityCost(btn)
+                
+                if currentEnergy < requiredEnergy then
+                    dbg("energy_low", ("Skipping %s: Need %d, have %d"):format(btn.Name, requiredEnergy, currentEnergy), 0.5)
+                    return false 
+                end
+                
+                return true
+            end
 
 			local function pickBestAbility()
 				local order = {_G.AA_FS, _G.AA_SS, _G.AA_TS}
