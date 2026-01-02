@@ -132,7 +132,7 @@ if game.PlaceId == 10595058975 then
 	local ADMethodDropdown = QOLTab:CreateDropdown({
 		Name = "Dodge Method",
 		Options = {"Blatant", "Semi-Legit", "Legit"},
-		CurrentOption = {"Semi-Legit"},
+		CurrentOption = {"Legit"},
 		MultipleOptions = false,
 		Callback = function(Options)
 			_G.AD_METHOD = Options[1]
