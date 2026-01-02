@@ -229,6 +229,7 @@ if game.PlaceId == 10595058975 then
 					block.Visible = false
 					local pGui = game:GetService("Players").LocalPlayer.PlayerGui.Combat
 					if pGui:FindFirstChild("Go") then pGui.Go.Visible = false end
+					game:GetService("Players").LocalPlayer.PlayerGui.Combat.BlockBar.Visible = false
 					-- Fire once. Let the Hook decide if it's a success or fail.
 					event:FireServer({true, true}, "DodgeMinigame")
 
