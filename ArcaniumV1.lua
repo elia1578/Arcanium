@@ -485,7 +485,7 @@ if game.PlaceId == 10595058975 then
 	-- =========================================================
 	-- DEBUG
 	-- =========================================================
-	local DEBUG = true
+	local DEBUG = false
 	local _last = {}
 
 	local function dbg(key, msg, every)
@@ -766,15 +766,31 @@ if game.PlaceId == 10595058975 then
                 return (cd and cd:IsA("GuiObject") and cd.Visible) or false
             end
 
-            -- ===== DEBUGGED ENERGY HELPERS =====
-            local function getPlayerEnergy()
+			-- ===== DEBUGGED ENERGY & EFFECT HELPERS =====
+            
+            local function getPlayerModel()
                 local living = workspace:FindFirstChild("Living")
-                local charModel = living and living:FindFirstChild(player.Name)
+                return living and living:FindFirstChild(player.Name)
+            end
+
+            local function getPlayerEnergy()
+                local charModel = getPlayerModel()
                 local status = charModel and charModel:FindFirstChild("Status")
                 local energyValue = status and status:FindFirstChild("Energy")
                 
                 local val = energyValue and energyValue.Value or 0
                 dbg("energy_check", ("Current Energy: %d"):format(val), 1.0)
+                return val
+            end
+
+            -- NEW: Check for Darkcore stacks/value
+            local function getDarkcoreValue()
+                local charModel = getPlayerModel()
+                local effects = charModel and charModel:FindFirstChild("Effects")
+                local darkcore = effects and effects:FindFirstChild("Darkcore")
+                
+                local val = darkcore and darkcore.Value or 0
+                dbg("darkcore_check", ("Darkcore Value: %d"):format(val), 1.0)
                 return val
             end
 
@@ -785,12 +801,9 @@ if game.PlaceId == 10595058975 then
                 
                 if textLabel and textLabel:IsA("TextLabel") then
                     local cost = tonumber(textLabel.Text) or 0
-                    -- This will tell us if the script is actually finding the number
                     dbg("cost_check_" .. btn.Name, ("%s Cost: %d"):format(btn.Name, cost), 1.0)
                     return cost
                 end
-                
-                dbg("cost_error_" .. btn.Name, ("Could not find Cost for %s"):format(btn.Name), 1.0)
                 return 0
             end
 
@@ -806,14 +819,21 @@ if game.PlaceId == 10595058975 then
                 local currentEnergy = getPlayerEnergy()
                 local requiredEnergy = getAbilityCost(btn)
                 
-                -- DEBUG PRINT: This is the most important one
-                dbg("canuse_logic", ("Checking %s | Have: %d | Need: %d"):format(btn.Name, currentEnergy, requiredEnergy), 0.1)
-
                 if currentEnergy < requiredEnergy then
-                    print("[AA] Energy too low for " .. btn.Name .. "! Skipping.")
+                    dbg("energy_low", ("Skipping %s: Need %d Energy"):format(btn.Name, requiredEnergy), 0.5)
                     return false 
                 end
+
+                -- 3. Special Requirement: Darkcore Eruption
+                if btn.Name == "Darkcore Eruption" then
+                    local darkcoreVal = getDarkcoreValue()
+                    if darkcoreVal < 1 then
+                        dbg("darkcore_low", "Skipping Darkcore Eruption: Need at least 1 Darkcore value", 0.5)
+                        return false
+                    end
+                end
                 
+                -- If all checks pass
                 return true
             end
 
