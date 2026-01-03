@@ -65,7 +65,7 @@ if game.PlaceId == 10595058975 then
 
     -- Rayfield Window
     local Window = Rayfield:CreateWindow({
-        Name = "Arcanium - Free",
+        Name = "Arcanium - Paid",
         LoadingTitle = "Welcome to Arcanium",
         LoadingSubtitle = "by Yours Truly",
         ShowText = "Arcanium",
@@ -76,7 +76,15 @@ if game.PlaceId == 10595058975 then
         ConfigurationSaving = {
             Enabled = true,
             FileName = "Arcanium"
-        }
+        },
+
+		Discord = {
+			Enabled = true, -- Prompt the user to join your Discord server if their executor supports it
+			Invite = "q3kQ3eESUZ", -- The Discord invite code, do not include discord.gg/. E.g. discord.gg/ ABCD would be ABCD
+			RememberJoins = true -- Set this to false to make them join the discord every time they load it up
+		},
+
+		KeySystem = false, -- Set this to true to use our key system
     })
 
     local QOLTab = Window:CreateTab("Quality Of Life", "crown")
