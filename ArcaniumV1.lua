@@ -2,39 +2,66 @@ if getgenv().Rayfield then getgenv().Rayfield:Destroy() end
 local Rayfield = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
 
 if game.PlaceId == 10595058975 then
-    -- Anti Afk
-    local VirtualUser = game:GetService('VirtualUser')
-    game:GetService('Players').LocalPlayer.Idled:Connect(function()
-        VirtualUser:CaptureController()
-        VirtualUser:ClickButton2(Vector2.new())
-    end)
+	-- Anti Afk
+	local VirtualUser = game:GetService('VirtualUser')
+	game:GetService('Players').LocalPlayer.Idled:Connect(function()
+		VirtualUser:CaptureController()
+		VirtualUser:ClickButton2(Vector2.new())
+	end)
 
-    -- Adonis Disabler (optimized)
-    if not _G.ADONIS_HOOKED then
-        _G.ADONIS_HOOKED = true
-        local Hooked = {}
-        
-        setthreadidentity(2)
-        for i, v in getgc(true) do
-            if typeof(v) == "table" then
-                local DetectFunc = rawget(v, "Detected")
-                local KillFunc = rawget(v, "Kill")
-                
-                if typeof(DetectFunc) == "function" and not Hooked.Detected then
-                    Hooked.Detected = hookfunction(DetectFunc, function(Action, Info, NoCrash)
-                        return true
-                    end)
-                end
-                
-                if rawget(v, "Variables") and rawget(v, "Process") and typeof(KillFunc) == "function" and not Hooked.Kill then
-                    Hooked.Kill = hookfunction(KillFunc, function(Info)
-                        -- Do nothing
-                    end)
-                end
-            end
-        end
-        setthreadidentity(7)
-    end
+	-- Adonis Raper
+
+	if not _G.ADONIS_HOOKED then
+		_G.ADONIS_HOOKED = true
+
+		local getinfo = getinfo or debug.getinfo
+		local DEBUG = false
+		local Hooked = {}
+
+		local Detected, Kill
+
+		setthreadidentity(2)
+
+		for i, v in getgc(true) do
+			if typeof(v) == "table" then
+					local DetectFunc = rawget(v, "Detected")
+				local KillFunc = rawget(v, "Kill")
+				
+				if typeof(DetectFunc) == "function" and not Detected then
+					Detected = DetectFunc
+					local Old; Old = hookfunction(Detected, function(Action, Info, NoCrash)
+						if Action ~= "_" and DEBUG then
+							warn(`Adonis AntiCheat flagged\nMethod: {Action}\nInfo: {Info}`)
+						end
+						return true
+					end)
+					table.insert(Hooked, Detected)
+				end
+
+				if rawget(v, "Variables") and rawget(v, "Process") and typeof(KillFunc) == "function" and not Kill then
+					Kill = KillFunc
+					local Old; Old = hookfunction(Kill, function(Info)
+						if DEBUG then
+							warn(`Adonis AntiCheat tried to kill (fallback): {Info}`)
+						end
+					end)
+					table.insert(Hooked, Kill)
+				end
+			end
+		end
+
+		local Old; Old = hookfunction(getrenv().debug.info, newcclosure(function(...)
+			local LevelOrFunc, Info = ...
+			if Detected and LevelOrFunc == Detected then
+				if DEBUG then warn(`zins | adonis bypassed`) end
+				return coroutine.yield(coroutine.running())
+				end
+			return Old(...)
+		end))
+		setthreadidentity(7)
+	end
+
+	wait(2)
 
     -- Rayfield Window
     local Window = Rayfield:CreateWindow({
@@ -349,19 +376,6 @@ if game.PlaceId == 10595058975 then
             end)
         end
     })
-
-    -- =========================================================
-    -- CLEANUP
-    -- =========================================================
-    local function cleanup()
-        stopLogic()
-        stopAutoQTE()
-    end
-
-    _G.CleanupQOLScript = cleanup
-    game:GetService("Players").PlayerRemoving:Connect(function(plr)
-        if plr == player then cleanup() end
-    end)
 
     -- =========================================================
     -- LOWER QUALITY BUTTON
@@ -1126,7 +1140,7 @@ if game.PlaceId == 10595058975 then
 
     PlayerTab:CreateSlider({
         Name = "JumpPower Value",
-        Range = {50, 300},
+        Range = {50, 200},
         Increment = 1,
         Suffix = " Power",
         CurrentValue = JP_Value,
