@@ -93,88 +93,117 @@ if game.PlaceId == 10595058975 then
 	QOLTab:CreateLabel("Use these to feel reeeeeal good")
 
 	local ReplicatedStorage = game:GetService("ReplicatedStorage")
-	local RunService = game:GetService("RunService")
+	local RunService = game:GetService("RunService")	
 	local Players = game:GetService("Players")
 
 	local player = Players.LocalPlayer
-	local gui = player:WaitForChild("PlayerGui")
-	local event = ReplicatedStorage.Remotes.Information.RemoteFunction
-
-	local function isIndicatorInDodge(perfectCenter)
-		local combat = gui:FindFirstChild("Combat")
-		local block = combat and combat:FindFirstChild("Block")
-		if not block or not block.Visible then return false end
-
-		local indicator = block:FindFirstChild("Inset") and block.Inset:FindFirstChild("Indicator")
-		local dodgeZone = block:FindFirstChild("Inset") and block.Inset:FindFirstChild("Dodge")
-
-		if indicator and dodgeZone then
-			local iPos = indicator.AbsolutePosition.X + (indicator.AbsoluteSize.X / 2)
-			local dPos = dodgeZone.AbsolutePosition.X
-			local dSize = dodgeZone.AbsoluteSize.X
-			
-			if perfectCenter then
-				-- Semi-Legit: Targets the exact middle of the dodge zone
-				local dCenter = dPos + (dSize / 2)
-				return math.abs(iPos - dCenter) < 10 -- 5 pixel tolerance
-			else
-				-- Legit: Triggers as soon as it touches the zone
-				return iPos >= dPos and iPos <= (dPos + dSize)
-			end
-		end
-		return false
-	end
 
 	-- =========================================================
-	-- UI COMPONENTS (Dropdown + Toggle)
-	-- =========================================================
-	local ADMethodDropdown = QOLTab:CreateDropdown({
-		Name = "Dodge Method",
-		Options = {"Blatant", "Semi-Legit", "Legit"},
-		CurrentOption = {"Legit"},
-		MultipleOptions = false,
-		Callback = function(Options)
-			_G.AD_METHOD = Options[1]
-		end,
-	})
-
-	-- =========================================================
-	-- GLOBAL SETTINGS
+	-- GLOBALS & DEFAULTS
 	-- =========================================================
 	_G.AD_ON = _G.AD_ON or false
 	_G.AD_METHOD = _G.AD_METHOD or "Legit"
-	_G.AD_CHANCE = _G.AD_CHANCE or 100 
-
-	local hasDodgedThisCycle = false -- Prevents spamming
+	_G.AD_CHANCE = _G.AD_CHANCE or 100
+	_G.AQTE_ON = _G.AQTE_ON or false
+	_G.AQTE_METHOD = _G.AQTE_METHOD or "Legit"
+	_G.SPAM_COUNT = _G.SPAM_COUNT or 10 -- How many times to spam the remote
 
 	-- =========================================================
-	-- REMOTE HOOK (Success Chance + Safety)
+	-- SINGLE-INSTANCE GUARD (The Global Brain)
 	-- =========================================================
-	local oldNamecall
-	oldNamecall = hookmetamethod(game, "__namecall", function(self, ...)
-		local method = getnamecallmethod()
-		local args = {...}
+	_G.__AD_DATA = _G.__AD_DATA or {
+		runId = 0,
+		conn = nil,
+		activeTarget = nil,
+		dodging = false,
+		lastUI = nil,
+		qteConn = nil,
+		activeQTEs = {}
+	}
+	local State = _G.__AD_DATA
 
-		if not checkcaller() and _G.AD_ON and (method == "FireServer" or method == "InvokeServer") then
-			if args[2] == "DodgeMinigame" and type(args[1]) == "table" then
-				-- Every time a dodge fires, roll the dice based on the slider
-				local roll = math.random(1, 100)
-				if roll <= _G.AD_CHANCE then
-					args[1][1] = true
-					args[1][2] = true
-				else
-					args[1][1] = true
-					args[1][2] = false -- Failure state
-				end
-				return oldNamecall(self, unpack(args))
-			end
+	local function stopLogic()
+		if State.conn then State.conn:Disconnect() end
+		State.runId += 1
+		State.conn = nil
+		State.activeTarget = nil
+		State.dodging = false
+		State.lastUI = nil
+	end
+
+	-- =========================================================
+	-- REMOTE SPAMMING HELPERS
+	-- =========================================================
+	local function getRemote()
+		return ReplicatedStorage:FindFirstChild("Remotes") 
+			and ReplicatedStorage.Remotes:FindFirstChild("Information")
+			and ReplicatedStorage.Remotes.Information:FindFirstChild("RemoteFunction")
+	end
+
+	local function spamRemote(args, remoteName)
+		local remote = getRemote()
+		if not remote then return end
+		
+		local spamCount = _G.SPAM_COUNT or 10
+		for i = 1, spamCount do
+			task.spawn(function()
+				remote:FireServer(args, remoteName)
+			end)
 		end
-		return oldNamecall(self, ...)
-	end)
+	end
+
+	local function spamQTERemote(qteName)
+		local remote = getRemote()
+		if not remote then return end
+		
+		local spamCount = _G.SPAM_COUNT or 10
+		for i = 1, spamCount do
+			task.spawn(function()
+				remote:FireServer(true, qteName)
+			end)
+		end
+	end
 
 	-- =========================================================
-	-- UI COMPONENTS
+	-- HELPERS
 	-- =========================================================
+	local function getCombatUI()
+		return player:FindFirstChild("PlayerGui") and player.PlayerGui:FindFirstChild("Combat")
+	end
+
+	local function isIndicatorInZone(zoneName, perfectCenter)
+		local combat = getCombatUI()
+		local block = combat and combat:FindFirstChild("Block")
+		local inset = block and block:FindFirstChild("Inset")
+		if not (inset and block.Visible) then return false end
+
+		local indicator = inset:FindFirstChild("Indicator")
+		local target = inset:FindFirstChild(zoneName)
+		if not (indicator and target) then return false end
+
+		local iX = indicator.AbsolutePosition.X + indicator.AbsoluteSize.X / 2
+		local tX, tW = target.AbsolutePosition.X, target.AbsoluteSize.X
+		
+		if perfectCenter then
+			local tC = tX + tW / 2
+			return math.abs(iX - tC) < 10
+		else
+			return iX >= tX and iX <= (tX + tW)
+		end
+	end
+
+	-- =========================================================
+	-- SETTINGS UI
+	-- =========================================================
+	local ADMethodDropdown = QOLTab:CreateDropdown({
+		Name = "Dodge Method",
+		Options = {"Blatant", "Legit"},
+		CurrentOption = {_G.AD_METHOD == "Semi-Legit" and "Legit" or _G.AD_METHOD},
+		MultipleOptions = false,
+		Callback = function(opt)
+			_G.AD_METHOD = opt[1]
+		end
+	})
 
 	local ADChanceSlider = QOLTab:CreateSlider({
 		Name = "Dodge Success Chance",
@@ -183,148 +212,205 @@ if game.PlaceId == 10595058975 then
 		Suffix = "%",
 		CurrentValue = _G.AD_CHANCE,
 		Flag = "ADChance",
-		Callback = function(Value)
-			_G.AD_CHANCE = Value
-		end,
+		Callback = function(val)
+			_G.AD_CHANCE = val
+		end
 	})
 
+	local SpamCountSlider = QOLTab:CreateSlider({
+		Name = "Remote Spam Count",
+		Range = {5, 20},
+		Increment = 5,
+		CurrentValue = _G.SPAM_COUNT,
+		Flag = "SpamCount",
+		Callback = function(val)
+			_G.SPAM_COUNT = val
+		end
+	})
+
+	-- =========================================================
+	-- AUTO DODGE LOOP (Improved with Spamming)
+	-- =========================================================
 	local ADToggle = QOLTab:CreateToggle({
 		Name = "Auto Dodge",
-		CurrentValue = false,
+		CurrentValue = _G.AD_ON,
 		Flag = "AD",
-		Callback = function(Value)
-			_G.AD_ON = Value
+		Callback = function(val)
+			_G.AD_ON = val
+			stopLogic()
+			if not val then return end
 
-			-- PROBLEM 1 FIX: Always clear old connection before starting
-			if _G.AD_CONN then 
-				_G.AD_CONN:Disconnect() 
-				_G.AD_CONN = nil 
-			end
+			local myId = State.runId
+			State.conn = RunService.Heartbeat:Connect(function()
+				-- Safety Exit
+				if State.runId ~= myId or not _G.AD_ON then 
+					stopLogic() 
+					return 
+				end
 
-			if not Value then 
-				hasDodgedThisCycle = false
-				return 
-			end
-
-			-- Re-acquire GUI inside the loop to avoid Problem 6 (Stale References)
-			_G.AD_CONN = game:GetService("RunService").Heartbeat:Connect(function()
-				if not _G.AD_ON then return end
-
-				local pGui = game:GetService("Players").LocalPlayer:FindFirstChild("PlayerGui")
-				local combat = pGui and pGui:FindFirstChild("Combat")
+				local combat = getCombatUI()
 				local block = combat and combat:FindFirstChild("Block")
+				local inset = block and block:FindFirstChild("Inset")
 
-				-- PROBLEM 4 FIX: Reset debounce when UI goes away
-				if not block or not block.Visible then
-					hasDodgedThisCycle = false
+				-- State Reset
+				if not (block and inset and block.Visible) then
+					State.activeTarget = nil
+					State.dodging = false
+					State.lastUI = nil
 					return
 				end
 
-				-- If already fired for this specific prompt, wait for next one
-				if hasDodgedThisCycle then return end
+				-- Instance Guard
+				if State.lastUI ~= inset then
+					State.activeTarget = nil
+					State.dodging = false
+					State.lastUI = inset
+				end
 
-				if _G.AD_METHOD == "Blatant" then
-					hasDodgedThisCycle = true
-					block.Visible = false
-					local pGui = game:GetService("Players").LocalPlayer.PlayerGui.Combat
-					if pGui:FindFirstChild("Go") then pGui.Go.Visible = false end
-					game:GetService("Players").LocalPlayer.PlayerGui.Combat.BlockBar.Visible = false
-					-- Fire once. Let the Hook decide if it's a success or fail.
-					event:FireServer({true, true}, "DodgeMinigame")
+				if State.dodging then return end
 
-				elseif _G.AD_METHOD == "Semi-Legit" then
-					if isIndicatorInDodge(true) then
-						hasDodgedThisCycle = true
-						-- PROBLEM 2 FIX: Use task.spawn to avoid yielding Heartbeat
-						task.spawn(function()
-							task.wait(math.random(5, 12) / 100) -- Small random human delay
-							event:FireServer({true, true}, "DodgeMinigame")
-						end)
+				-- Decision Phase
+				if not State.activeTarget then
+					local hasDodge = inset:FindFirstChild("Dodge")
+					local hasBlock = inset:FindFirstChild("Block")
+
+					if hasDodge and hasBlock then
+						-- Use AD_CHANCE to determine success
+						local success = (math.random(1,100) <= _G.AD_CHANCE)
+						-- If successful, dodge; if failed, block
+						State.activeTarget = success and "Dodge" or "Block"
+						State.willSucceed = success
+					elseif hasDodge then
+						State.activeTarget = "Dodge"
+						State.willSucceed = true
+					elseif hasBlock then
+						State.activeTarget = "Block"
+						State.willSucceed = true -- Block always succeeds if it's the only option
 					end
+				end
 
+				if not State.activeTarget then return end
+
+				-- Execution
+				if _G.AD_METHOD == "Blatant" then
+					State.dodging = true
+					task.spawn(function()
+						local args = {true, State.activeTarget == "Dodge"}
+						spamRemote(args, "DodgeMinigame")
+						
+						task.wait(0.1)
+						State.dodging = false
+						State.activeTarget = nil -- Reset for next dodge
+					end)
 				elseif _G.AD_METHOD == "Legit" then
-					if isIndicatorInDodge(false) then
-						local goBtn = combat:FindFirstChild("Go")
-						if goBtn and goBtn.Visible then
-							hasDodgedThisCycle = true
-							firesignal(goBtn.MouseButton1Click)
+					if isIndicatorInZone(State.activeTarget, false) then
+						local go = combat:FindFirstChild("Go")
+						if go and go.Visible then
+							State.dodging = true
+							task.spawn(function()
+								-- Also spam the remote for good measure
+								local args = {true, State.activeTarget == "Dodge"}
+								local remote = getRemote()
+								remote:FireServer(args, "DodgeMinigame")
+								firesignal(go.MouseButton1Click)
+								
+								task.wait(0.1)
+								State.dodging = false
+								State.activeTarget = nil -- Reset for next dodge
+							end)
 						end
 					end
 				end
 			end)
-		end,
+		end
 	})
 
 	-- =========================================================
-	-- AUTO QTE SETTINGS
+	-- AUTO QTE LOOP (Improved with Spamming)
 	-- =========================================================
-	_G.AQTE_METHOD = _G.AQTE_METHOD or "Blatant"
-	local activeQTEs = {} -- Debounce table for Legit mode delay
-
 	local QTEMethodDropdown = QOLTab:CreateDropdown({
 		Name = "QTE Method",
-		Options = {"Blatant", "Semi-Legit"},
-		CurrentOption = {"Semi-Legit"},
+		Options = {"Blatant", "Legit"},
+		CurrentOption = {_G.AQTE_METHOD == "Semi-Legit" and "Legit" or _G.AQTE_METHOD},
 		MultipleOptions = false,
-		Callback = function(Options)
-			_G.AQTE_METHOD = Options[1]
-		end,
+		Callback = function(opt)
+			_G.AQTE_METHOD = opt[1]
+		end
 	})
+
+	local function stopAutoQTE()
+		if State.qteConn then 
+			State.qteConn:Disconnect() 
+			State.qteConn = nil 
+		end
+		State.activeQTEs = {}
+	end
 
 	local AQTEToggle = QOLTab:CreateToggle({
 		Name = "Auto QTE",
-		CurrentValue = false,
+		CurrentValue = _G.AQTE_ON,
 		Flag = "AQTE",
-		Callback = function(Value)
-			_G.AQTE_ON = Value
+		Callback = function(val)
+			_G.AQTE_ON = val
+			stopAutoQTE()
+			if not val then return end
 
-			if not Value then
-				if _G.AQTE_CONN then _G.AQTE_CONN:Disconnect() _G.AQTE_CONN = nil end
-				activeQTEs = {} 
-				return
-			end
-
-			if _G.AQTE_CONN then return end
-
-			local combat = gui:WaitForChild("Combat")
-
-			_G.AQTE_CONN = RunService.RenderStepped:Connect(function()
-				if not _G.AQTE_ON then return end
+			State.qteConn = RunService.RenderStepped:Connect(function()
+				if not _G.AQTE_ON then 
+					stopAutoQTE()
+					return 
+				end
+				
+				local combat = getCombatUI()
+				if not combat then return end
 
 				for _, ui in ipairs(combat:GetChildren()) do
 					if ui:IsA("GuiObject") and ui.Name:find("QTE") and ui.Visible then
-						
 						if _G.AQTE_METHOD == "Blatant" then
-							-- BLATANT: Instant fire and hide
-							ui.Visible = false
-							if combat:FindFirstChild("Go") then combat.Go.Visible = false end
-							event:FireServer(true, ui.Name)
-							
-						elseif _G.AQTE_METHOD == "Semi-Legit" then
-							-- LEGIT: Wait 1-2 seconds, then fire
-							if not activeQTEs[ui.Name] then
-								activeQTEs[ui.Name] = true -- Mark as "processing"
-								
+							if not State.activeQTEs[ui.Name] then
+								State.activeQTEs[ui.Name] = true
 								task.spawn(function()
-									local delayTime = math.random(250, 400) / 100 -- Random 1.0 to 2.0
-									task.wait(delayTime)
+									-- Spam QTE remote with true (always true for QTE)
+									spamQTERemote(ui.Name)
+									task.wait(0.5)
+									State.activeQTEs[ui.Name] = nil
+								end)
+							end
+							
+						elseif _G.AQTE_METHOD == "Legit" then
+							if not State.activeQTEs[ui.Name] then
+								State.activeQTEs[ui.Name] = true
+								task.spawn(function()
+									-- Add realistic delay for "Legit" mode
+									local delay = math.random(120, 240) / 100
+									task.wait(delay)
 									
-									-- Check if QTE is still active/visible after the wait
 									if ui.Visible and _G.AQTE_ON then
-										event:FireServer(true, ui.Name)
+										-- Spam QTE remote with true
+										spamQTERemote(ui.Name)
 									end
 									
-									-- Small cooldown before this specific QTE type can be handled again
-									task.wait(0.5)
-									activeQTEs[ui.Name] = nil
+									task.wait(0.4)
+									State.activeQTEs[ui.Name] = nil
 								end)
 							end
 						end
 					end
 				end
 			end)
-		end,
+		end
 	})
+
+	-- =========================================================
+	-- CLEANUP ON SCRIPT END
+	-- =========================================================
+	local function cleanup()
+		stopLogic()
+		stopAutoQTE()
+	end
+
+	-- Store cleanup function for external access if needed
+	_G.CleanupQOLScript = cleanup
 
 	local QOLDivider = QOLTab:CreateDivider()
 
