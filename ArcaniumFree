@@ -5,9 +5,9 @@ if game.PlaceId == 10595058975 then
 	-- Anti Afk
 	local VirtualUser = game:GetService('VirtualUser')
 	game:GetService('Players').LocalPlayer.Idled:Connect(function()
-		VirtualUser:CaptureController()
-		VirtualUser:ClickButton2(Vector2.new())
-	end)
+        VirtualUser:CaptureController()
+        VirtualUser:ClickButton2(Vector2.new())
+    end)
 
 	-- Adonis Raper
 
@@ -30,9 +30,6 @@ if game.PlaceId == 10595058975 then
 				if typeof(DetectFunc) == "function" and not Detected then
 					Detected = DetectFunc
 					local Old; Old = hookfunction(Detected, function(Action, Info, NoCrash)
-						if Action ~= "_" and DEBUG then
-							warn(`Adonis AntiCheat flagged\nMethod: {Action}\nInfo: {Info}`)
-						end
 						return true
 					end)
 					table.insert(Hooked, Detected)
@@ -41,19 +38,15 @@ if game.PlaceId == 10595058975 then
 				if rawget(v, "Variables") and rawget(v, "Process") and typeof(KillFunc) == "function" and not Kill then
 					Kill = KillFunc
 					local Old; Old = hookfunction(Kill, function(Info)
-						if DEBUG then
-							warn(`Adonis AntiCheat tried to kill (fallback): {Info}`)
-						end
 					end)
 					table.insert(Hooked, Kill)
 				end
 			end
 		end
 
-		local Old; Old = hookfunction(getrenv().debug.info, newcclosure(function(...)
+		local Old; Old = hookfunction(getrenv().debug.getinfo, newcclosure(function(...)
 			local LevelOrFunc, Info = ...
 			if Detected and LevelOrFunc == Detected then
-				if DEBUG then warn(`zins | adonis bypassed`) end
 				return coroutine.yield(coroutine.running())
 				end
 			return Old(...)
@@ -1158,5 +1151,5 @@ if game.PlaceId == 10595058975 then
         end,
     })
 else
-    Rayfield:Destroy()z
+    Rayfield:Destroy()
 end
