@@ -1176,7 +1176,7 @@ if game.PlaceId == 10595058975 then
 
     DupeTab:CreateInput({
         Name = "Target Item Name",
-        PlaceholderText = "e.g. Frosty Topper (NOT SAME AS DUMMY)",
+        PlaceholderText = "e.g. Vainglorious Locket (NOT SAME AS DUMMY)",
         RemoveTextAfterFocusLost = false,
         Callback = function(text)
             _G.DupeScript.ItemName = text
