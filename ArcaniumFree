@@ -142,11 +142,10 @@ if game.PlaceId == 10595058975 then
         local remote = getRemote()
         if not remote then return end
         
-        local spamCount = _G.SPAM_COUNT or 5
+        local spamCount = _G.SPAM_COUNT or 10
         for i = 1, spamCount do
-            task.spawn(function()
-                remote:FireServer(args, remoteName)
-            end)
+            remote:FireServer(args, remoteName)
+            task.wait(0.75)  -- Wait between each fire
         end
     end
 
@@ -159,9 +158,8 @@ if game.PlaceId == 10595058975 then
         
         -- Always send exactly 5 times for QTE as requested
         for i = 1, 5 do
-            task.spawn(function()
-                remote:FireServer(true, qteName)
-            end)
+            remote:FireServer(true, qteName)
+            wait(0.5)
         end
     end
 
@@ -221,8 +219,8 @@ if game.PlaceId == 10595058975 then
 
     local SpamCountSlider = QOLTab:CreateSlider({
         Name = "Remote Spam Count",
-        Range = {1, 20},
-        Increment = 1,
+        Range = {5, 20},
+        Increment = 5,
         CurrentValue = _G.SPAM_COUNT,
         Flag = "SpamCount",
         Callback = function(val)
@@ -292,6 +290,8 @@ if game.PlaceId == 10595058975 then
                     task.spawn(function()
                         local args = {true, State.activeTarget == "Dodge"}
                         spamRemote(args, "DodgeMinigame")
+                        game:GetService("Players").LocalPlayer.PlayerGui.Combat.Block.Visible = false
+                        game:GetService("Players").LocalPlayer.PlayerGui.Combat.BlockBar.Visible = false
                         task.wait(0.05)
                         State.dodging = false
                         State.activeTarget = nil
@@ -364,6 +364,7 @@ if game.PlaceId == 10595058975 then
                             if _G.AQTE_METHOD == "Blatant" then
                                 task.spawn(function()
                                     spamQTERemote(ui.Name)
+                                    ui.Visible = false
                                     task.wait(0.5)
                                     State.activeQTEs[ui.Name] = nil
                                 end)
@@ -373,6 +374,7 @@ if game.PlaceId == 10595058975 then
                                     task.wait(delay)
                                     if ui.Visible and _G.AQTE_ON then
                                         spamQTERemote(ui.Name)
+                                        ui.Visible = false
                                     end
                                     task.wait(0.4)
                                     State.activeQTEs[ui.Name] = nil
@@ -1056,7 +1058,7 @@ if game.PlaceId == 10595058975 then
 		end
 	end)
 
-	-- =========================================================
+    -- =========================================================
     -- PLAYER SECTION (Optimized)
     -- =========================================================
     local PlayerTab = Window:CreateTab("Player", "hand-metal")
@@ -1067,9 +1069,16 @@ if game.PlaceId == 10595058975 then
     local WS_Value = 16
     local JP_Enabled = false
     local JP_Value = 50
+    local NOCLIP_ENABLED = false
+    local FLIGHT_ENABLED = false
+    local FLIGHT_SPEED = 50
 
     -- Optimized movement loop
     local movementConn
+    local noclipConn
+    local flightConn
+    local flightBodyVelocity
+
     local function updateMovementLoop()
         if movementConn then movementConn:Disconnect() end
         
@@ -1087,7 +1096,18 @@ if game.PlaceId == 10595058975 then
     end
 
     updateMovementLoop()
-    player.CharacterAdded:Connect(updateMovementLoop)
+    player.CharacterAdded:Connect(function()
+        updateMovementLoop()
+        -- Reset flight and noclip on new character
+        if NOCLIP_ENABLED then
+            NOCLIP_ENABLED = false
+            pcall(function() NoclipToggle:Set(false) end)
+        end
+        if FLIGHT_ENABLED then
+            FLIGHT_ENABLED = false
+            pcall(function() FlightToggle:Set(false) end)
+        end
+    end)
 
     PlayerTab:CreateToggle({
         Name = "Hide Names",
@@ -1097,9 +1117,9 @@ if game.PlaceId == 10595058975 then
             local HUD = player.PlayerGui:FindFirstChild("HUD")
             if HUD then
                 local holders = {"CharacterName", "ServerInfo", "Age/Region"}
-                for _, name in ipairs(holders) do
+                for _, name in ipholders do
                     local element = HUD:FindFirstChild(name) or 
-                                  (HUD.Holder and HUD.Holder:FindFirstChild(name))
+                                (HUD.Holder and HUD.Holder:FindFirstChild(name))
                     if element then element.Visible = not val end
                 end
             end
@@ -1107,7 +1127,7 @@ if game.PlaceId == 10595058975 then
     })
 
     PlayerTab:CreateSection("Movement")
-    
+
     PlayerTab:CreateToggle({
         Name = "Enable WalkSpeed",
         CurrentValue = WS_Enabled,
@@ -1155,6 +1175,206 @@ if game.PlaceId == 10595058975 then
         Flag = "JPVal",
         Callback = function(val)
             JP_Value = val
+        end,
+    })
+
+    -- =========================================================
+    -- NOCLIP TOGGLE (Improved with state saving)
+    -- =========================================================
+    PlayerTab:CreateSection("Collision")
+
+    local originalCollisionStates = {} -- Store original CanCollide states
+
+    local NoclipToggle = PlayerTab:CreateToggle({
+        Name = "Noclip",
+        CurrentValue = NOCLIP_ENABLED,
+        Flag = "Noclip",
+        Callback = function(val)
+            NOCLIP_ENABLED = val
+            
+            if noclipConn then
+                noclipConn:Disconnect()
+                noclipConn = nil
+            end
+            
+            local char = player.Character
+            if not char then return end
+            
+            if not val then
+                -- Restore original collision states when turned off
+                for part, originalState in pairs(originalCollisionStates) do
+                    if part and part.Parent then
+                        pcall(function()
+                            part.CanCollide = originalState
+                        end)
+                    end
+                end
+                originalCollisionStates = {}
+                return
+            end
+            
+            -- Store original collision states before changing
+            for _, part in ipairs(char:GetDescendants()) do
+                if part:IsA("BasePart") then
+                    originalCollisionStates[part] = part.CanCollide
+                end
+            end
+            
+            -- Noclip loop
+            noclipConn = RunService.Stepped:Connect(function()
+                if not NOCLIP_ENABLED then 
+                    if noclipConn then 
+                        noclipConn:Disconnect() 
+                        noclipConn = nil 
+                    end
+                    return 
+                end
+                
+                local char = player.Character
+                if char then
+                    for _, part in ipairs(char:GetDescendants()) do
+                        if part:IsA("BasePart") then
+                            -- Store state if we haven't already
+                            if originalCollisionStates[part] == nil then
+                                originalCollisionStates[part] = part.CanCollide
+                            end
+                            part.CanCollide = false
+                        end
+                    end
+                end
+            end)
+        end,
+    })
+
+    -- =========================================================
+    -- FLIGHT SYSTEM (Improved with Q/E and look direction)
+    -- =========================================================
+    PlayerTab:CreateSection("Flight")
+
+    local flightSpeedSlider = PlayerTab:CreateSlider({
+        Name = "Flight Speed",
+        Range = {20, 150},
+        Increment = 5,
+        Suffix = " Speed",
+        CurrentValue = FLIGHT_SPEED,
+        Flag = "FlightSpeed",
+        Callback = function(val)
+            FLIGHT_SPEED = val
+            -- Update existing flight velocity if active
+            if flightBodyVelocity and flightBodyVelocity.Parent then
+                flightBodyVelocity.MaxForce = Vector3.new(40000, 40000, 40000) * FLIGHT_SPEED
+            end
+        end,
+    })
+
+    local FlightToggle = PlayerTab:CreateToggle({
+        Name = "Flight",
+        CurrentValue = FLIGHT_ENABLED,
+        Flag = "Flight",
+        Callback = function(val)
+            FLIGHT_ENABLED = val
+            
+            if flightConn then
+                flightConn:Disconnect()
+                flightConn = nil
+            end
+            
+            if flightBodyVelocity then
+                flightBodyVelocity:Destroy()
+                flightBodyVelocity = nil
+            end
+            
+            if not val then return end
+            
+            -- Create flight velocity object
+            local char = player.Character
+            if not char then return end
+            
+            local root = char:FindFirstChild("HumanoidRootPart")
+            if not root then return end
+            
+            flightBodyVelocity = Instance.new("BodyVelocity")
+            flightBodyVelocity.Name = "FlightVelocity"
+            flightBodyVelocity.MaxForce = Vector3.new(40000, 40000, 40000) * FLIGHT_SPEED
+            flightBodyVelocity.Velocity = Vector3.new(0, 0, 0)
+            flightBodyVelocity.P = 10000
+            flightBodyVelocity.Parent = root
+            
+            -- Flight control loop with look direction movement
+            flightConn = RunService.Heartbeat:Connect(function()
+                if not FLIGHT_ENABLED or not flightBodyVelocity or not flightBodyVelocity.Parent then 
+                    if flightConn then 
+                        flightConn:Disconnect() 
+                        flightConn = nil 
+                    end
+                    return 
+                end
+                
+                local char = player.Character
+                local root = char and char:FindFirstChild("HumanoidRootPart")
+                if not root then return end
+                
+                -- Get movement direction from camera look direction
+                local cam = workspace.CurrentCamera
+                local moveDirection = Vector3.new(0, 0, 0)
+                
+                -- Check input states
+                local UIS = game:GetService("UserInputService")
+                
+                -- Move in the direction the camera is looking
+                if UIS:IsKeyDown(Enum.KeyCode.W) then
+                    moveDirection = moveDirection + cam.CFrame.LookVector
+                end
+                if UIS:IsKeyDown(Enum.KeyCode.S) then
+                    moveDirection = moveDirection - cam.CFrame.LookVector
+                end
+                if UIS:IsKeyDown(Enum.KeyCode.A) then
+                    moveDirection = moveDirection - cam.CFrame.RightVector
+                end
+                if UIS:IsKeyDown(Enum.KeyCode.D) then
+                    moveDirection = moveDirection + cam.CFrame.RightVector
+                end
+                
+                -- Q for down, E for up (vertical movement)
+                if UIS:IsKeyDown(Enum.KeyCode.E) then
+                    moveDirection = moveDirection + Vector3.new(0, 1, 0)
+                end
+                if UIS:IsKeyDown(Enum.KeyCode.Q) then
+                    moveDirection = moveDirection - Vector3.new(0, 1, 0)
+                end
+                
+                -- Normalize and apply speed (only if moving)
+                if moveDirection.Magnitude > 0 then
+                    moveDirection = moveDirection.Unit * FLIGHT_SPEED
+                    flightBodyVelocity.Velocity = moveDirection
+                else
+                    flightBodyVelocity.Velocity = Vector3.new(0, 0, 0)
+                end
+                
+                -- Update max force for speed changes
+                flightBodyVelocity.MaxForce = Vector3.new(40000, 40000, 40000) * FLIGHT_SPEED
+            end)
+        end,
+    })
+
+    PlayerTab:CreateButton({
+        Name = "Reset Flight (if stuck)",
+        Callback = function()
+            if flightBodyVelocity then
+                flightBodyVelocity:Destroy()
+                flightBodyVelocity = nil
+            end
+            if flightConn then
+                flightConn:Disconnect()
+                flightConn = nil
+            end
+            FLIGHT_ENABLED = false
+            pcall(function() FlightToggle:Set(false) end)
+            Rayfield:Notify({
+                Title = "Flight Reset",
+                Content = "Flight system has been reset",
+                Duration = 3
+            })
         end,
     })
 else
