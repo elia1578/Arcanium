@@ -1,3 +1,5 @@
+-- Paid
+
 if getgenv().Rayfield then getgenv().Rayfield:Destroy() end
 local Rayfield = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
 
@@ -550,97 +552,6 @@ if game.PlaceId == 10595058975 then
                     Duration = 3
                 })
             end)
-        end,
-    })
-
-    QOLTab:CreateDivider()
-
-    -- =========================================================
-    -- AUTO OPEN PRESENT (Optimized)
-    -- =========================================================
-    _G.AP_ON = _G.AP_ON or false
-    _G.SavedPresentIndex = _G.SavedPresentIndex or nil
-    _G.AP_CONN = _G.AP_CONN or nil
-
-    local function stopAutoPresent()
-        if _G.AP_CONN then
-            _G.AP_CONN:Disconnect()
-            _G.AP_CONN = nil
-        end
-    end
-
-    local PresentToggle = QOLTab:CreateToggle({
-        Name = "Auto Inf Present (Must have 1)",
-        CurrentValue = _G.AP_ON,
-        Flag = "AP",
-        Callback = function(val)
-            _G.AP_ON = val
-            stopAutoPresent()
-            if not val then return end
-
-            local lastOpen = 0
-            local cooldown = 0.3
-            
-            _G.AP_CONN = RunService.Heartbeat:Connect(function()
-                if not _G.AP_ON then 
-                    stopAutoPresent()
-                    return 
-                end
-                if os.clock() - lastOpen < cooldown then return end
-
-                local toolsFolder = player.Backpack:FindFirstChild("Tools")
-                if not toolsFolder then return end
-
-                if _G.SavedPresentIndex == nil then
-                    local children = toolsFolder:GetChildren()
-                    for i, child in ipairs(children) do
-                        if child.Name == "Unopened Present" then
-                            _G.SavedPresentIndex = i
-                            break
-                        end
-                    end
-                end
-
-                if _G.SavedPresentIndex then
-                    local children = toolsFolder:GetChildren()
-                    local targetPresent = children[_G.SavedPresentIndex]
-                    
-                    if targetPresent and targetPresent.Name == "Unopened Present" then
-                        local playerGui = player:WaitForChild("PlayerGui")
-                        local presentGui = playerGui:FindFirstChild("PresentOpen")
-                        
-                        local shouldFire = false
-                        if not presentGui then
-                            shouldFire = true
-                        else
-                            local reward = presentGui:FindFirstChild("Spinner") and presentGui.Spinner:FindFirstChild("Reward")
-                            if reward and reward.Visible then
-                                shouldFire = true
-                                task.wait(0.6)
-                            end
-                        end
-
-                        if shouldFire then
-                            lastOpen = os.clock()
-                            game:GetService("ReplicatedStorage").Remotes.Information.InventoryManage:FireServer(
-                                "Use", "Unopened Present", targetPresent
-                            )
-                        end
-                    end
-                end
-            end)
-        end,
-    })
-
-    QOLTab:CreateButton({
-        Name = "Reset Present Index",
-        Callback = function()
-            _G.SavedPresentIndex = nil
-            Rayfield:Notify({
-                Title = "Present Index Reset",
-                Content = "Will find new present on next run.",
-                Duration = 2
-            })
         end,
     })
 
