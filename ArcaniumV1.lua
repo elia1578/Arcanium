@@ -2543,12 +2543,12 @@ if game.PlaceId == 10595058975 then
     })
 
     -- =========================================================
-    -- DUPE SECTION (Optimized)
+    -- ITEM SPAWNING SECTION
     -- =========================================================
-    local DupeTab = Window:CreateTab("Duplication", "copy")
-    DupeTab:CreateSection("Item Duper Settings")
+    local SpawnTab = Window:CreateTab("Item Spawning", "package")
+    SpawnTab:CreateSection("Item Spawner Settings")
 
-    _G.DupeScript = _G.DupeScript or {
+    _G.SpawnScript = _G.SpawnScript or {
         Enabled = false,
         ItemName = "",
         DummyName = "",
@@ -2556,81 +2556,83 @@ if game.PlaceId == 10595058975 then
         Interval = 0.2
     }
 
-    local dupeConn
+    local spawnConn
 
-    DupeTab:CreateInput({
+    SpawnTab:CreateInput({
         Name = "Target Item Name",
-        PlaceholderText = "e.g. Vainglorious Locket (NOT SAME AS DUMMY)",
+        PlaceholderText = "e.g. Vainglorious Locket",
         RemoveTextAfterFocusLost = false,
         Callback = function(text)
-            _G.DupeScript.ItemName = text
+            _G.SpawnScript.ItemName = text
         end,
     })
 
-    DupeTab:CreateInput({
+    SpawnTab:CreateInput({
         Name = "Dummy Item Name",
         PlaceholderText = "e.g. Crystal Sphere (MUST BE A GEAR)",
         RemoveTextAfterFocusLost = false,
         Callback = function(text)
-            _G.DupeScript.DummyName = text
+            _G.SpawnScript.DummyName = text
         end,
     })
 
-    local function stopDupe()
-        if dupeConn then
-            dupeConn:Disconnect()
-            dupeConn = nil
+    local function stopSpawn()
+        if spawnConn then
+            spawnConn:Disconnect()
+            spawnConn = nil
         end
     end
 
-    local DupeToggle = DupeTab:CreateToggle({
-        Name = "Enable Item Duper",
-        CurrentValue = _G.DupeScript.Enabled,
-        Flag = "ItemDuper",
+    local SpawnToggle = SpawnTab:CreateToggle({
+        Name = "Enable Item Spawner",
+        CurrentValue = _G.SpawnScript.Enabled,
+        Flag = "ItemSpawner",
         Callback = function(val)
-            _G.DupeScript.Enabled = val
-            stopDupe()
+            _G.SpawnScript.Enabled = val
+            stopSpawn()
             
             if not val then return end
             
-            if _G.DupeScript.ItemName == _G.DupeScript.DummyName then
+            if _G.SpawnScript.ItemName == _G.SpawnScript.DummyName then
                 Rayfield:Notify({
                     Title = "Invalid Configuration",
                     Content = "Target Item and Dummy Item cannot be the same!",
                     Duration = 5,
                 })
-                _G.DupeScript.Enabled = false
+                _G.SpawnScript.Enabled = false
                 return
             end
 
-            dupeConn = RunService.Heartbeat:Connect(function()
-                if not _G.DupeScript.Enabled then 
-                    stopDupe()
+            spawnConn = RunService.Heartbeat:Connect(function()
+                if not _G.SpawnScript.Enabled then 
+                    stopSpawn()
                     return 
                 end
                 
                 local toolsFolder = player.Backpack:FindFirstChild("Tools")
                 if not toolsFolder then return end
                 
+                -- Find any dummy item (doesn't need to be the target item)
                 local foundIndex = nil
                 local children = toolsFolder:GetChildren()
                 
                 for i, item in ipairs(children) do
-                    if item.Name == _G.DupeScript.DummyName then
+                    if item.Name == _G.SpawnScript.DummyName then
                         foundIndex = i
                         break
                     end
                 end
 
                 if foundIndex then
+                    -- Spawn the target item using the dummy as reference
                     game:GetService("ReplicatedStorage").Remotes.Information.InventoryManage:FireServer(
-                        "Use", _G.DupeScript.ItemName, children[foundIndex]
+                        "Use", _G.SpawnScript.ItemName, children[foundIndex]
                     )
                 else
-                    _G.DupeScript.Enabled = false
-                    stopDupe()
+                    _G.SpawnScript.Enabled = false
+                    stopSpawn()
                     Rayfield:Notify({
-                        Title = "Dupe Failed",
+                        Title = "Spawn Failed",
                         Content = "Dummy item not found in backpack.",
                         Duration = 5,
                     })
@@ -2639,7 +2641,7 @@ if game.PlaceId == 10595058975 then
         end,
     })
 
-    DupeTab:CreateSection("Auto Unequip")
+    SpawnTab:CreateSection("Auto Unequip")
 
     local unequipConn
     local function stopUnequip()
@@ -2649,23 +2651,23 @@ if game.PlaceId == 10595058975 then
         end
     end
 
-    DupeTab:CreateToggle({
+    SpawnTab:CreateToggle({
         Name = "Auto Unequip Matches",
-        CurrentValue = _G.DupeScript.UnequipEnabled,
+        CurrentValue = _G.SpawnScript.UnequipEnabled,
         Flag = "AutoUnequip",
         Callback = function(val)
-            _G.DupeScript.UnequipEnabled = val
+            _G.SpawnScript.UnequipEnabled = val
             stopUnequip()
             
             if not val then return end
             
             unequipConn = RunService.Heartbeat:Connect(function()
-                if not _G.DupeScript.UnequipEnabled then 
+                if not _G.SpawnScript.UnequipEnabled then 
                     stopUnequip()
                     return 
                 end
                 
-                if _G.DupeScript.ItemName == "" then return end
+                if _G.SpawnScript.ItemName == "" then return end
                 
                 local equipmentFolder = player.PlayerGui.StatMenu.Main.Container.Equipment
                 for i = 1, 4 do
@@ -2674,7 +2676,7 @@ if game.PlaceId == 10595058975 then
                     if body then
                         local label = body:FindFirstChild("TextLabel")
                         local unequipBtn = body:FindFirstChild("GearUnequip")
-                        if label and label.Text == _G.DupeScript.ItemName and unequipBtn then
+                        if label and label.Text == _G.SpawnScript.ItemName and unequipBtn then
                             firesignal(unequipBtn.MouseButton1Click)
                         end
                     end
