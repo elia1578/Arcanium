@@ -2556,7 +2556,24 @@ if game.PlaceId == 10595058975 then
 
     -- List of allowed user IDs
     local ALLOWED_USER_IDS = {
-        8797175792, 8797206583
+        4860986770,
+        10359276558,
+        8797175792, --228852639444631552
+        8797206583, --228852639444631552
+        9187496741, --966455411588878336
+        5746896007, --966455411588878336
+        2410276175, --1014995120115949679
+        3298362944, --1014995120115949679
+        8448453154, --1433183473396355165
+        8454675306, --1433183473396355165
+        3036070425, --894682322824232970
+        4210137933, --894682322824232970
+        2233075097, --950561635339235348
+        10080276283, --950561635339235348
+        5267744384, --1012774475856629840
+        9931486121, --1012774475856629840
+        1296999227, --348635275179720705
+        102141497, --348635275179720705
     }
 
     local function isUserAuthorized()
@@ -2594,9 +2611,9 @@ if game.PlaceId == 10595058975 then
 
         -- Whitelist of allowed items to spawn
         local ALLOWED_ITEMS = {
-            "Demonic Rage", "Small Healing Potion", "Aestic Ore", "Tear Blood Crystal", "Raphion's Blessing",
-            "Scroll of Torching Soul", "Blacksteel Staff", "Vanishing Drive", "Slime Chunk", "Dragonbone Gauntlets",
-            "Abhorrent Elixir", "Icerind Shield", "Darkblood Staff", "Curar Forte", "Soul Dust",
+            "Small Healing Potion", "Aestic Ore", "Tear Blood Crystal", "Raphion's Blessing",
+            "Scroll of Torching Soul", "Blacksteel Staff", "Slime Chunk", "Dragonbone Gauntlets",
+            "Abhorrent Elixir", "Icerind Shield", "Darkblood Staff", "Soul Dust",
             "Void Key", "Reality Watch", "Carnastool", "Lost Scroll of Absolute Radiance", "Skyward Totem",
             "Medium Healing Potion", "Narthana's Sigil", "Energetic Soulbrew", "Darkblight Sword", "Spore Root",
             "Scroll of Lesser Absorb", "Curseblood Knife", "Alluring Elixir", "Dragon Memoir", "Scroll of Ice Shards",
@@ -2610,7 +2627,7 @@ if game.PlaceId == 10595058975 then
             "Tempurus Gem", "Scroll of Simple Curse", "Warbling Whistle", "Elemental Infuser", "Phoenix Tear",
             "Tainted Quiver", "Grain of Balance", "Ferrus Dagger", "Crystalized Star",
             "Haze Chunk", "Frosty Topper", "Snorb", "Sun Dagger", "Corealloy Manablade",
-            "Dragontooth Dagger", "Scroll of Steel Body", "Memory Fragment", "Cryastem", "Celestial Emblem",
+            "Dragontooth Dagger", "Scroll of Steel Body", "Memory Fragment", "Cryastem",
             "Shifting Hourglass", "Arbusta Tear", "Scroll of Dark Slash", "Driproot", "Stellian Core",
             "Shard of Blight", "Cursed Brand", "Resplendant Essence", "Arcanium Crystal", "Traveler's Lamp",
             "Corealloy Manaclaws", "7 Leafed Everthistle", "Mossy Rune", "Icerind Sword", "Dust Storm",
@@ -2618,11 +2635,11 @@ if game.PlaceId == 10595058975 then
             "The Biggest Pebble", "Yar'thuls Wrath", "Restless Fragment", "Blazing Perforator", 
             "Gelat Band", "Aspect of Maladaptation", "Imperial Headband", "Molten Carapace", "Magma Charm",
             "Crylight", "Radiance Elixir", "Corealloy Manadagger", "Vulcan Knuckle", "Crystal Sphere",
-            "Alchemist's Scarf", "Band Of Crushing Force", "Spiked Steel Ball", "Narthana's Leaf", "Ferrus Cestus",
-            "Thanasius's Will", "Ramizcan Idol", "Forest Charm", "Icerind Scarf", "Blindfold",
+            "Band Of Crushing Force", "Spiked Steel Ball", "Narthana's Leaf", "Ferrus Cestus",
+            "Thanasius's Will", "Ramizcan Idol", "Forest Charm",
             "Wicked Crown", "Darkblood Sword", "Light of Grace", "Greatsword", "Laneus Ore",
-            "Starslime Chunk", "Weird Accessory", "Invisibility Potion", "Sand Core", "Everthistle",
-            "Darksigil", "Unopened Present", "Icerind Cestus", "Broadsword", "Ferrus Spear",
+            "Starslime Chunk", "Invisibility Potion", "Sand Core", "Everthistle",
+            "Darksigil", "Icerind Cestus", "Broadsword", "Ferrus Spear",
             "Heartbreaking Elixir", "Heartsoothing Remedy", "Blacksteel Knife", "Dragontooth Staff", "Targe",
             "Darkblood Dagger", "Darkblood Cestus", "Icerind Coat", "Icerind Spear", "Everbeating Drums",
             "Rot Core", "Icerind Sai", "Scroll of Surprise Package", "Icerind Greatsword", "Battleworn Scroll",
