@@ -505,10 +505,175 @@ if game.PlaceId == 10595058975 then
     QOLTab:CreateSection("Fight Controls")
 
     QOLTab:CreateButton({
-        Name = "Manual End Fight Now",
+        Name = "End Fight Now",
         Callback = function()
             sendFightEnd()
         end
+    })
+
+        -- =========================================================
+    -- THORIAN'S GATE IMAGE FINDER
+    -- =========================================================
+    QOLTab:CreateSection("Thorian's Gate Helper")
+    
+    local imageDisplayGui = nil
+    
+    local function findObfuscatedImages()
+        local foundImages = {}
+        
+        -- Search through workspace for the specific hierarchy
+        for _, part in ipairs(workspace:GetChildren()) do
+            if part:IsA("BasePart") then
+                -- Check if part has a SurfaceGui child
+                for _, surfaceGui in ipairs(part:GetChildren()) do
+                    if surfaceGui:IsA("SurfaceGui") then
+                        -- Check if SurfaceGui has an ImageLabel child
+                        for _, imageLabel in ipairs(surfaceGui:GetChildren()) do
+                            if imageLabel:IsA("ImageLabel") then
+                                -- Found a matching hierarchy!
+                                table.insert(foundImages, {
+                                    part = part,
+                                    surfaceGui = surfaceGui,
+                                    imageLabel = imageLabel
+                                })
+                                print("[Thorian] Found rune:", part.Name, "->", surfaceGui.Name, "->", imageLabel.Name)
+                            end
+                        end
+                    end
+                end
+            end
+        end
+        
+        return foundImages
+    end
+    
+    local function createImageDisplay(images)
+        -- Remove existing display if it exists
+        if imageDisplayGui then
+            imageDisplayGui:Destroy()
+            imageDisplayGui = nil
+        end
+        
+        -- Create new ScreenGui
+        imageDisplayGui = Instance.new("ScreenGui")
+        imageDisplayGui.Name = "ThorianImageDisplay"
+        imageDisplayGui.ResetOnSpawn = false
+        imageDisplayGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+        
+        -- Create background frame
+        local backgroundFrame = Instance.new("Frame")
+        backgroundFrame.Name = "Background"
+        backgroundFrame.Size = UDim2.new(0, 500, 0, 120)
+        backgroundFrame.Position = UDim2.new(0.5, -250, 0.85, -60)
+        backgroundFrame.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
+        backgroundFrame.BackgroundTransparency = 0.3
+        backgroundFrame.BorderSizePixel = 0
+        backgroundFrame.Parent = imageDisplayGui
+        
+        -- Rounded corners
+        local corner = Instance.new("UICorner")
+        corner.CornerRadius = UDim.new(0, 10)
+        corner.Parent = backgroundFrame
+        
+        -- Title label
+        local titleLabel = Instance.new("TextLabel")
+        titleLabel.Name = "Title"
+        titleLabel.Size = UDim2.new(1, 0, 0, 25)
+        titleLabel.Position = UDim2.new(0, 0, 0, 5)
+        titleLabel.BackgroundTransparency = 1
+        titleLabel.Text = "Thorian's Gate Runes (" .. #images .. " found)"
+        titleLabel.TextColor3 = Color3.new(1, 1, 1)
+        titleLabel.TextSize = 16
+        titleLabel.Font = Enum.Font.GothamBold
+        titleLabel.Parent = backgroundFrame
+        
+        -- Container for images
+        local imageContainer = Instance.new("Frame")
+        imageContainer.Name = "ImageContainer"
+        imageContainer.Size = UDim2.new(1, -20, 0, 80)
+        imageContainer.Position = UDim2.new(0, 10, 0, 35)
+        imageContainer.BackgroundTransparency = 1
+        imageContainer.Parent = backgroundFrame
+        
+        -- Layout for images
+        local layout = Instance.new("UIListLayout")
+        layout.FillDirection = Enum.FillDirection.Horizontal
+        layout.HorizontalAlignment = Enum.HorizontalAlignment.Center
+        layout.VerticalAlignment = Enum.VerticalAlignment.Center
+        layout.Padding = UDim.new(0, 10)
+        layout.Parent = imageContainer
+        
+        -- Clone and display each image
+        for i, imageData in ipairs(images) do
+            if i <= 6 then -- Max 6 images
+                local imageClone = imageData.imageLabel:Clone()
+                imageClone.Name = "Image" .. i
+                imageClone.Size = UDim2.new(0, 70, 0, 70)
+                imageClone.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+                imageClone.BorderSizePixel = 2
+                imageClone.BorderColor3 = Color3.fromRGB(100, 100, 100)
+                
+                -- Add corner to cloned image
+                local imageCorner = Instance.new("UICorner")
+                imageCorner.CornerRadius = UDim.new(0, 8)
+                imageCorner.Parent = imageClone
+                
+                imageClone.Parent = imageContainer
+            end
+        end
+        
+        imageDisplayGui.Parent = player.PlayerGui
+        
+        -- Auto-remove after 20 seconds
+        task.delay(30, function()
+            if imageDisplayGui then
+                -- Fade out animation
+                local fadeSteps = 40
+                for i = 1, fadeSteps do
+                    if imageDisplayGui and backgroundFrame then
+                        backgroundFrame.BackgroundTransparency = 0.3 + (0.7 * (i / fadeSteps))
+                        for _, child in ipairs(imageContainer:GetChildren()) do
+                            if child:IsA("ImageLabel") then
+                                child.ImageTransparency = i / fadeSteps
+                            end
+                        end
+                        titleLabel.TextTransparency = i / fadeSteps
+                    end
+                    task.wait(0.05)
+                end
+                
+                if imageDisplayGui then
+                    imageDisplayGui:Destroy()
+                    imageDisplayGui = nil
+                end
+            end
+        end)
+    end
+    
+    QOLTab:CreateButton({
+        Name = "Find Thorian's Gate Runes",
+        Callback = function()
+            print("[Thorian] Searching for obfuscated images...")
+            local images = findObfuscatedImages()
+            
+            if #images >= 5 then
+                print("[Thorian] Found " .. #images .. " images, displaying...")
+                createImageDisplay(images)
+                
+                Rayfield:Notify({
+                    Title = "Runes Found",
+                    Content = "Found " .. #images .. " Thorian's Gate runes!",
+                    Duration = 3
+                })
+            else
+                print("[Thorian] Only found " .. #images .. " runes")
+                Rayfield:Notify({
+                    Title = "Not Enough Runes",
+                    Content = "Make sure to have loaded the surrounding area at Thorian's Gate!",
+                    Duration = 5
+                })
+            end
+        end,
     })
 
     -- =========================================================
@@ -853,13 +1018,13 @@ if game.PlaceId == 10595058975 then
             end
 
             local function getPlayerEnergy()
-                local charModel = getPlayerModel()
-                local status = charModel and charModel:FindFirstChild("Status")
-                local energyValue = status and status:FindFirstChild("Energy")
-                
-                local val = energyValue and energyValue.Value or 0
-                dbg("energy_check", ("Current Energy: %d"):format(val), 1.0)
-                return val
+                local success, energy = pcall(function()
+                    local charModel = getPlayerModel()
+                    local status = charModel and charModel:FindFirstChild("Status")
+                    local energyValue = status and status:FindFirstChild("Energy")
+                    return energyValue and energyValue.Value or 0
+                end)
+                return success and energy or 0
             end
 
             -- NEW: Check for Darkcore stacks/value
@@ -1121,31 +1286,17 @@ if game.PlaceId == 10595058975 then
 
     -- Enable Noclip and Flight for farm (WITH COLLISION SAFETY)
     local function enableFarmMovement()
-        -- Save current states BEFORE enabling
-        NOCLIP_ENABLED_SAVED = _G.NOCLIP_ENABLED or false
-        FLIGHT_ENABLED_SAVED = _G.FLIGHT_ENABLED or false
-        
-        print("[Farm] Saving states - Noclip:", NOCLIP_ENABLED_SAVED, "Flight:", FLIGHT_ENABLED_SAVED)
-        
-        -- Enable noclip ONLY if it wasn't already enabled
-        if NoclipToggle and not _G.NOCLIP_ENABLED then
-            print("[Farm] Enabling noclip for farm")
-            NoclipToggle:Set(true)
-        else
-            print("[Farm] Noclip already enabled or toggle not found")
-        end
-        
-        -- Enable flight ONLY if it wasn't already enabled
-        if FlightToggle and not _G.FLIGHT_ENABLED then
-            print("[Farm] Enabling flight for farm")
-            FlightToggle:Set(true)
-        else
-            print("[Farm] Flight already enabled or toggle not found")
-        end
-        
-        -- Wait a bit for toggles to take effect
-        task.wait(0.1)
-    end
+       NOCLIP_ENABLED_SAVED = _G.NOCLIP_ENABLED or false
+       FLIGHT_ENABLED_SAVED = _G.FLIGHT_ENABLED or false
+       
+       if not _G.NOCLIP_ENABLED and NoclipToggle then
+           NoclipToggle:Set(true)
+       end
+       
+       if not _G.FLIGHT_ENABLED and FlightToggle then
+           FlightToggle:Set(true)
+       end
+   end
 
     -- Disable Noclip and Flight after farm (RESTORE ORIGINAL STATE)
     local function disableFarmMovement()
@@ -2556,8 +2707,10 @@ if game.PlaceId == 10595058975 then
 
     -- List of allowed user IDs
     local ALLOWED_USER_IDS = {
+        10384376326,
         4860986770,
         10359276558,
+        4860967557,
         8797175792, --228852639444631552
         8797206583, --228852639444631552
         9187496741, --966455411588878336
@@ -3485,6 +3638,236 @@ if game.PlaceId == 10595058975 then
                 else
                     print("Auto trade disabled")
                 end
+            end,
+        })
+
+        -- =========================================================
+        -- AUTO PRESENT OPENER
+        -- =========================================================
+        SpawnTab:CreateSection("Present Auto-Opener")
+
+        local presentSettings = {
+            Enabled = false,
+            Amount = 10,
+            IsOpening = false
+        }
+
+        local presentHook = nil
+        local originalNamecall = nil
+        local activeConnection = nil
+
+        -- Function to check if present GUI is still open
+        local function isPresentOpen()
+            local presentGui = player.PlayerGui:FindFirstChild("PresentOpen")
+            return presentGui ~= nil
+        end
+
+        -- Auto-unstuck loop that checks every 5 seconds
+        task.spawn(function()
+            while true do
+                task.wait(5)
+                
+                -- If we think we're opening but the GUI is gone, reset
+                if presentSettings.IsOpening and not isPresentOpen() then
+                    print("[Present] Auto-unstuck: GUI gone but IsOpening was true, resetting...")
+                    presentSettings.IsOpening = false
+                    
+                    if activeConnection then
+                        activeConnection:Disconnect()
+                        activeConnection = nil
+                    end
+                end
+            end
+        end)
+
+        -- Function to fire the present remote multiple times using Heartbeat
+        local function firePresentRemote(remoteFunction, times)
+            -- Don't start if already opening
+            if presentSettings.IsOpening then
+                print("[Present] Already opening, skipping...")
+                return
+            end
+            
+            -- Clean up any existing connection first
+            if activeConnection then
+                activeConnection:Disconnect()
+                activeConnection = nil
+            end
+            
+            presentSettings.IsOpening = true
+            print("[Present] Starting auto-open: " .. times .. " presents at maximum speed")
+            
+            task.spawn(function()
+                local successCount = 0
+                local failCount = 0
+                local currentIndex = 1
+                
+                -- Wait a tiny bit for the first present to process
+                task.wait(0.05)
+                
+                local RunService = game:GetService("RunService")
+                
+                activeConnection = RunService.Heartbeat:Connect(function()
+                    if currentIndex > times then
+                        -- Done!
+                        if activeConnection then
+                            activeConnection:Disconnect()
+                            activeConnection = nil
+                        end
+                        presentSettings.IsOpening = false
+                        
+                        Rayfield:Notify({
+                            Title = "Present Opening Complete",
+                            Content = "Opened " .. successCount .. " presents!\nFailed: " .. failCount,
+                            Duration = 5
+                        })
+                        
+                        print("[Present] Finished! Success: " .. successCount .. ", Failed: " .. failCount)
+                        return
+                    end
+                    
+                    -- Check if toggle is still enabled
+                    if not presentSettings.Enabled then
+                        print("[Present] Stopped by user at " .. currentIndex .. "/" .. times)
+                        if activeConnection then
+                            activeConnection:Disconnect()
+                            activeConnection = nil
+                        end
+                        presentSettings.IsOpening = false
+                        return
+                    end
+                    
+                    -- Check if present GUI is still open (every 10 presents to reduce overhead)
+                    if currentIndex % 10 == 0 and not isPresentOpen() then
+                        print("[Present] Present GUI closed, stopping at " .. currentIndex .. "/" .. times)
+                        if activeConnection then
+                            activeConnection:Disconnect()
+                            activeConnection = nil
+                        end
+                        presentSettings.IsOpening = false
+                        return
+                    end
+                    
+                    local success, err = pcall(function()
+                        remoteFunction:InvokeServer(false)
+                    end)
+                    
+                    if success then
+                        successCount = successCount + 1
+                    else
+                        failCount = failCount + 1
+                    end
+                    
+                    currentIndex = currentIndex + 1
+                end)
+            end)
+        end
+
+        -- Function to setup the present hook
+        local function setupPresentHook()
+            if presentHook then
+                print("[Present] Hook already exists")
+                return
+            end
+            
+            print("[Present] Setting up present hook...")
+            
+            originalNamecall = hookmetamethod(game, "__namecall", function(self, ...)
+                local method = getnamecallmethod()
+                local args = {...}
+                
+                -- Check if this is the present remote being called
+                if method == "InvokeServer" and self.Name == "RemoteFunction" then
+                    -- Verify it's the correct path
+                    local parent = self.Parent
+                    if parent and parent.Name == "SpinnerClient" then
+                        local grandparent = parent.Parent
+                        if grandparent and grandparent.Name == "PresentOpen" then
+                            local greatgrandparent = grandparent.Parent
+                            if greatgrandparent and greatgrandparent.Name == "PlayerGui" then
+                                -- This is the present remote!
+                                if presentSettings.Enabled and #args > 0 and args[1] == false then
+                                    -- Only intercept if not already opening
+                                    if not presentSettings.IsOpening then
+                                        print("[Present] Detected present opening, intercepting...")
+                                        
+                                        -- Fire the original once (the player's click) - MUST happen first
+                                        local result = originalNamecall(self, ...)
+                                        
+                                        -- Then fire multiple times based on settings
+                                        firePresentRemote(self, presentSettings.Amount * 2)
+                                        
+                                        return result
+                                    else
+                                        print("[Present] Already opening, passing through...")
+                                    end
+                                end
+                            end
+                        end
+                    end
+                end
+                
+                return originalNamecall(self, ...)
+            end)
+            
+            presentHook = true
+            print("[Present] Hook installed successfully")
+        end
+
+        -- Function to remove the present hook
+        local function removePresentHook()
+            if activeConnection then
+                activeConnection:Disconnect()
+                activeConnection = nil
+            end
+            
+            if originalNamecall and presentHook then
+                hookmetamethod(game, "__namecall", originalNamecall)
+                presentHook = nil
+                originalNamecall = nil
+                print("[Present] Hook removed")
+            end
+            
+            presentSettings.IsOpening = false
+        end
+
+        -- Toggle for enabling/disabling auto-opener
+        SpawnTab:CreateToggle({
+            Name = "Auto Open Presents",
+            CurrentValue = presentSettings.Enabled,
+            Flag = "PresentAutoOpen",
+            Callback = function(val)
+                presentSettings.Enabled = val
+                
+                if val then
+                    setupPresentHook()
+                    Rayfield:Notify({
+                        Title = "Present Auto-Opener Enabled",
+                        Content = "Open a present to trigger auto-opening!",
+                        Duration = 4
+                    })
+                else
+                    removePresentHook()
+                    Rayfield:Notify({
+                        Title = "Present Auto-Opener Disabled",
+                        Content = "Hook removed.",
+                        Duration = 3
+                    })
+                end
+            end,
+        })
+
+        -- Slider for amount of presents to open
+        SpawnTab:CreateSlider({
+            Name = "Presents to Open per Click",
+            Range = {2, 2500},
+            Increment = 1,
+            Suffix = " presents",
+            CurrentValue = presentSettings.Amount,
+            Flag = "PresentAmount",
+            Callback = function(val)
+                presentSettings.Amount = val
+                print("[Present] Set to open " .. val .. " presents per click")
             end,
         })
     end
