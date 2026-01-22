@@ -82,7 +82,7 @@ if game.PlaceId == 10595058975 then
 
 		Discord = {
 			Enabled = true, -- Prompt the user to join your Discord server if their executor supports it
-			Invite = "q3kQ3eESUZ", -- The Discord invite code, do not include discord.gg/. E.g. discord.gg/ ABCD would be ABCD
+			Invite = "54bj7MRD2r", -- The Discord invite code, do not include discord.gg/. E.g. discord.gg/ ABCD would be ABCD
 			RememberJoins = true -- Set this to false to make them join the discord every time they load it up
 		},
 
