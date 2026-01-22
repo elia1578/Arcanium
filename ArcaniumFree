@@ -82,7 +82,7 @@ if game.PlaceId == 10595058975 then
 
 		Discord = {
 			Enabled = true, -- Prompt the user to join your Discord server if their executor supports it
-			Invite = "q3kQ3eESUZ", -- The Discord invite code, do not include discord.gg/. E.g. discord.gg/ ABCD would be ABCD
+			Invite = "54bj7MRD2r", -- The Discord invite code, do not include discord.gg/. E.g. discord.gg/ ABCD would be ABCD
 			RememberJoins = true -- Set this to false to make them join the discord every time they load it up
 		},
 
@@ -500,6 +500,183 @@ if game.PlaceId == 10595058975 then
     })
 
     -- =========================================================
+    -- END FIGHT SYSTEM (AFTER SEPARATOR)
+    -- =========================================================
+    QOLTab:CreateSection("Fight Controls")
+
+    QOLTab:CreateButton({
+        Name = "End Fight Now",
+        Callback = function()
+            sendFightEnd()
+        end
+    })
+
+        -- =========================================================
+    -- THORIAN'S GATE IMAGE FINDER
+    -- =========================================================
+    QOLTab:CreateSection("Thorian's Gate Helper")
+    
+    local imageDisplayGui = nil
+    
+    local function findObfuscatedImages()
+        local foundImages = {}
+        
+        -- Search through workspace for the specific hierarchy
+        for _, part in ipairs(workspace:GetChildren()) do
+            if part:IsA("BasePart") then
+                -- Check if part has a SurfaceGui child
+                for _, surfaceGui in ipairs(part:GetChildren()) do
+                    if surfaceGui:IsA("SurfaceGui") then
+                        -- Check if SurfaceGui has an ImageLabel child
+                        for _, imageLabel in ipairs(surfaceGui:GetChildren()) do
+                            if imageLabel:IsA("ImageLabel") then
+                                -- Found a matching hierarchy!
+                                table.insert(foundImages, {
+                                    part = part,
+                                    surfaceGui = surfaceGui,
+                                    imageLabel = imageLabel
+                                })
+                                print("[Thorian] Found rune:", part.Name, "->", surfaceGui.Name, "->", imageLabel.Name)
+                            end
+                        end
+                    end
+                end
+            end
+        end
+        
+        return foundImages
+    end
+    
+    local function createImageDisplay(images)
+        -- Remove existing display if it exists
+        if imageDisplayGui then
+            imageDisplayGui:Destroy()
+            imageDisplayGui = nil
+        end
+        
+        -- Create new ScreenGui
+        imageDisplayGui = Instance.new("ScreenGui")
+        imageDisplayGui.Name = "ThorianImageDisplay"
+        imageDisplayGui.ResetOnSpawn = false
+        imageDisplayGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+        
+        -- Create background frame
+        local backgroundFrame = Instance.new("Frame")
+        backgroundFrame.Name = "Background"
+        backgroundFrame.Size = UDim2.new(0, 500, 0, 120)
+        backgroundFrame.Position = UDim2.new(0.5, -250, 0.85, -60)
+        backgroundFrame.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
+        backgroundFrame.BackgroundTransparency = 0.3
+        backgroundFrame.BorderSizePixel = 0
+        backgroundFrame.Parent = imageDisplayGui
+        
+        -- Rounded corners
+        local corner = Instance.new("UICorner")
+        corner.CornerRadius = UDim.new(0, 10)
+        corner.Parent = backgroundFrame
+        
+        -- Title label
+        local titleLabel = Instance.new("TextLabel")
+        titleLabel.Name = "Title"
+        titleLabel.Size = UDim2.new(1, 0, 0, 25)
+        titleLabel.Position = UDim2.new(0, 0, 0, 5)
+        titleLabel.BackgroundTransparency = 1
+        titleLabel.Text = "Thorian's Gate Runes (" .. #images .. " found)"
+        titleLabel.TextColor3 = Color3.new(1, 1, 1)
+        titleLabel.TextSize = 16
+        titleLabel.Font = Enum.Font.GothamBold
+        titleLabel.Parent = backgroundFrame
+        
+        -- Container for images
+        local imageContainer = Instance.new("Frame")
+        imageContainer.Name = "ImageContainer"
+        imageContainer.Size = UDim2.new(1, -20, 0, 80)
+        imageContainer.Position = UDim2.new(0, 10, 0, 35)
+        imageContainer.BackgroundTransparency = 1
+        imageContainer.Parent = backgroundFrame
+        
+        -- Layout for images
+        local layout = Instance.new("UIListLayout")
+        layout.FillDirection = Enum.FillDirection.Horizontal
+        layout.HorizontalAlignment = Enum.HorizontalAlignment.Center
+        layout.VerticalAlignment = Enum.VerticalAlignment.Center
+        layout.Padding = UDim.new(0, 10)
+        layout.Parent = imageContainer
+        
+        -- Clone and display each image
+        for i, imageData in ipairs(images) do
+            if i <= 6 then -- Max 6 images
+                local imageClone = imageData.imageLabel:Clone()
+                imageClone.Name = "Image" .. i
+                imageClone.Size = UDim2.new(0, 70, 0, 70)
+                imageClone.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+                imageClone.BorderSizePixel = 2
+                imageClone.BorderColor3 = Color3.fromRGB(100, 100, 100)
+                
+                -- Add corner to cloned image
+                local imageCorner = Instance.new("UICorner")
+                imageCorner.CornerRadius = UDim.new(0, 8)
+                imageCorner.Parent = imageClone
+                
+                imageClone.Parent = imageContainer
+            end
+        end
+        
+        imageDisplayGui.Parent = player.PlayerGui
+        
+        -- Auto-remove after 20 seconds
+        task.delay(30, function()
+            if imageDisplayGui then
+                -- Fade out animation
+                local fadeSteps = 40
+                for i = 1, fadeSteps do
+                    if imageDisplayGui and backgroundFrame then
+                        backgroundFrame.BackgroundTransparency = 0.3 + (0.7 * (i / fadeSteps))
+                        for _, child in ipairs(imageContainer:GetChildren()) do
+                            if child:IsA("ImageLabel") then
+                                child.ImageTransparency = i / fadeSteps
+                            end
+                        end
+                        titleLabel.TextTransparency = i / fadeSteps
+                    end
+                    task.wait(0.05)
+                end
+                
+                if imageDisplayGui then
+                    imageDisplayGui:Destroy()
+                    imageDisplayGui = nil
+                end
+            end
+        end)
+    end
+    
+    QOLTab:CreateButton({
+        Name = "Find Thorian's Gate Runes",
+        Callback = function()
+            print("[Thorian] Searching for obfuscated images...")
+            local images = findObfuscatedImages()
+            
+            if #images >= 5 then
+                print("[Thorian] Found " .. #images .. " images, displaying...")
+                createImageDisplay(images)
+                
+                Rayfield:Notify({
+                    Title = "Runes Found",
+                    Content = "Found " .. #images .. " Thorian's Gate runes!",
+                    Duration = 3
+                })
+            else
+                print("[Thorian] Only found " .. #images .. " runes")
+                Rayfield:Notify({
+                    Title = "Not Enough Runes",
+                    Content = "Make sure to have loaded the surrounding area at Thorian's Gate!",
+                    Duration = 5
+                })
+            end
+        end,
+    })
+
+    -- =========================================================
     -- LOWER QUALITY BUTTON
     -- =========================================================
     local QOLDivider = QOLTab:CreateDivider()
@@ -542,8 +719,6 @@ if game.PlaceId == 10595058975 then
             end)
         end,
     })
-
-    QOLTab:CreateDivider()
 
 	local Players = game:GetService("Players")
 	local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -843,13 +1018,13 @@ if game.PlaceId == 10595058975 then
             end
 
             local function getPlayerEnergy()
-                local charModel = getPlayerModel()
-                local status = charModel and charModel:FindFirstChild("Status")
-                local energyValue = status and status:FindFirstChild("Energy")
-                
-                local val = energyValue and energyValue.Value or 0
-                dbg("energy_check", ("Current Energy: %d"):format(val), 1.0)
-                return val
+                local success, energy = pcall(function()
+                    local charModel = getPlayerModel()
+                    local status = charModel and charModel:FindFirstChild("Status")
+                    local energyValue = status and status:FindFirstChild("Energy")
+                    return energyValue and energyValue.Value or 0
+                end)
+                return success and energy or 0
             end
 
             -- NEW: Check for Darkcore stacks/value
@@ -1082,7 +1257,7 @@ if game.PlaceId == 10595058975 then
 	end)
 
     -- =========================================================
-    -- PLAYER SECTION (Optimized)
+    -- PLAYER SECTION (Optimized with State Persistence)
     -- =========================================================
     local PlayerTab = Window:CreateTab("Player", "hand-metal")
     PlayerTab:CreateSection("Player Main")
@@ -1092,8 +1267,9 @@ if game.PlaceId == 10595058975 then
     local WS_Value = 16
     local JP_Enabled = false
     local JP_Value = 50
-    local NOCLIP_ENABLED = false
-    local FLIGHT_ENABLED = false
+    -- State variables - MAKE THESE GLOBAL FOR FARM TO ACCESS
+    _G.NOCLIP_ENABLED = false
+    _G.FLIGHT_ENABLED = false
     local FLIGHT_SPEED = 50
 
     -- Optimized movement loop
@@ -1101,6 +1277,72 @@ if game.PlaceId == 10595058975 then
     local noclipConn
     local flightConn
     local flightBodyVelocity
+
+    -- Helper function to safely disconnect connections
+    local function safeDisconnect(connection)
+        if connection and typeof(connection) == "RBXScriptConnection" then
+            connection:Disconnect()
+        end
+        return nil
+    end
+
+    -- Cleanup function for noclip - RESTORES COLLISIONS
+    local originalCollisionStates = {}
+    
+        local function cleanupNoclip()
+        _G.NOCLIP_ENABLED = false
+        if noclipConn then
+            noclipConn = safeDisconnect(noclipConn)
+        end
+        
+        local char = player.Character
+        if char then
+            -- Restore original collision states for parts we stored
+            for part, originalState in pairs(originalCollisionStates) do
+                if part and part.Parent and originalState ~= nil then
+                    pcall(function()
+                        part.CanCollide = originalState
+                    end)
+                end
+            end
+            
+            -- For any parts we didn't store (newly added parts), set to default collision states
+            for _, part in ipairs(char:GetDescendants()) do
+                if part:IsA("BasePart") and originalCollisionStates[part] == nil then
+                    pcall(function()
+                        -- Default collision states: only Head and Torso parts should have CanCollide = true
+                        local partName = part.Name:lower()
+                        if partName == "head" or 
+                           partName == "torso" or 
+                           partName == "humanoidrootpart" then
+                            part.CanCollide = true
+                        else
+                            part.CanCollide = false
+                        end
+                    end)
+                end
+            end
+        end
+        originalCollisionStates = {}
+    end
+
+    -- Cleanup function for flight - RESTORES GRAVITY AND NORMAL MOVEMENT
+    local function cleanupFlight()
+        _G.FLIGHT_ENABLED = false
+        if flightConn then
+            flightConn = safeDisconnect(flightConn)
+        end
+        if flightBodyVelocity then
+            pcall(function() 
+                flightBodyVelocity:Destroy() 
+            end)
+            flightBodyVelocity = nil
+        end
+    end
+
+    -- Clean up any existing connections when script loads
+    cleanupNoclip()
+    cleanupFlight()
 
     local function updateMovementLoop()
         if movementConn then movementConn:Disconnect() end
@@ -1122,13 +1364,21 @@ if game.PlaceId == 10595058975 then
     player.CharacterAdded:Connect(function()
         updateMovementLoop()
         -- Reset flight and noclip on new character
-        if NOCLIP_ENABLED then
-            NOCLIP_ENABLED = false
-            pcall(function() NoclipToggle:Set(false) end)
+        if _G.NOCLIP_ENABLED then
+            cleanupNoclip()
+            pcall(function() 
+                if NoclipToggle then 
+                    NoclipToggle:Set(false) 
+                end 
+            end)
         end
-        if FLIGHT_ENABLED then
-            FLIGHT_ENABLED = false
-            pcall(function() FlightToggle:Set(false) end)
+        if _G.FLIGHT_ENABLED then
+            cleanupFlight()
+            pcall(function() 
+                if FlightToggle then 
+                    FlightToggle:Set(false) 
+                end 
+            end)
         end
     end)
 
@@ -1202,41 +1452,46 @@ if game.PlaceId == 10595058975 then
     })
 
     -- =========================================================
-    -- NOCLIP TOGGLE (Improved with state saving)
+    -- NOCLIP TOGGLE (Fixed with proper collision restoration)
     -- =========================================================
     PlayerTab:CreateSection("Collision")
 
-    local originalCollisionStates = {} -- Store original CanCollide states
-
     local NoclipToggle = PlayerTab:CreateToggle({
         Name = "Noclip",
-        CurrentValue = NOCLIP_ENABLED,
+        CurrentValue = _G.NOCLIP_ENABLED,
         Flag = "Noclip",
         Callback = function(val)
-            NOCLIP_ENABLED = val
+            -- If trying to turn off but variable says already off, still run cleanup
+            if not val and not _G.NOCLIP_ENABLED then
+                cleanupNoclip()
+                return
+            end
+            
+            _G.NOCLIP_ENABLED = val
             
             if noclipConn then
-                noclipConn:Disconnect()
-                noclipConn = nil
+                noclipConn = safeDisconnect(noclipConn)
             end
             
             local char = player.Character
-            if not char then return end
+            if not char then 
+                if val then
+                    -- Queue noclip for when character loads
+                    player.CharacterAdded:Wait()
+                    char = player.Character
+                else
+                    return
+                end
+            end
             
             if not val then
-                -- Restore original collision states when turned off
-                for part, originalState in pairs(originalCollisionStates) do
-                    if part and part.Parent then
-                        pcall(function()
-                            part.CanCollide = originalState
-                        end)
-                    end
-                end
-                originalCollisionStates = {}
+                -- IMMEDIATELY RESTORE COLLISIONS
+                cleanupNoclip()
                 return
             end
             
             -- Store original collision states before changing
+            originalCollisionStates = {}
             for _, part in ipairs(char:GetDescendants()) do
                 if part:IsA("BasePart") then
                     originalCollisionStates[part] = part.CanCollide
@@ -1245,11 +1500,8 @@ if game.PlaceId == 10595058975 then
             
             -- Noclip loop
             noclipConn = RunService.Stepped:Connect(function()
-                if not NOCLIP_ENABLED then 
-                    if noclipConn then 
-                        noclipConn:Disconnect() 
-                        noclipConn = nil 
-                    end
+                if not _G.NOCLIP_ENABLED then 
+                    cleanupNoclip()
                     return 
                 end
                 
@@ -1257,7 +1509,7 @@ if game.PlaceId == 10595058975 then
                 if char then
                     for _, part in ipairs(char:GetDescendants()) do
                         if part:IsA("BasePart") then
-                            -- Store state if we haven't already
+                            -- Store state if we haven't already (in case parts get added while noclip is on)
                             if originalCollisionStates[part] == nil then
                                 originalCollisionStates[part] = part.CanCollide
                             end
@@ -1270,7 +1522,7 @@ if game.PlaceId == 10595058975 then
     })
 
     -- =========================================================
-    -- FLIGHT SYSTEM (Improved with Q/E and look direction)
+    -- FLIGHT SYSTEM (Fixed with proper gravity restoration)
     -- =========================================================
     PlayerTab:CreateSection("Flight")
 
@@ -1283,7 +1535,6 @@ if game.PlaceId == 10595058975 then
         Flag = "FlightSpeed",
         Callback = function(val)
             FLIGHT_SPEED = val
-            -- Update existing flight velocity if active
             if flightBodyVelocity and flightBodyVelocity.Parent then
                 flightBodyVelocity.MaxForce = Vector3.new(40000, 40000, 40000) * FLIGHT_SPEED
             end
@@ -1295,26 +1546,50 @@ if game.PlaceId == 10595058975 then
         CurrentValue = FLIGHT_ENABLED,
         Flag = "Flight",
         Callback = function(val)
+            -- If trying to turn off but variable says already off, still run cleanup
+            if not val and not FLIGHT_ENABLED then
+                cleanupFlight()
+                return
+            end
+            
             FLIGHT_ENABLED = val
             
             if flightConn then
-                flightConn:Disconnect()
-                flightConn = nil
+                flightConn = safeDisconnect(flightConn)
             end
             
             if flightBodyVelocity then
-                flightBodyVelocity:Destroy()
+                pcall(function() flightBodyVelocity:Destroy() end)
                 flightBodyVelocity = nil
             end
             
-            if not val then return end
+            if not val then 
+                -- RESTORE GRAVITY - destroy the velocity object
+                cleanupFlight()
+                return 
+            end
             
             -- Create flight velocity object
             local char = player.Character
-            if not char then return end
+            if not char then 
+                -- Queue flight for when character loads
+                player.CharacterAdded:Wait()
+                char = player.Character
+            end
             
             local root = char:FindFirstChild("HumanoidRootPart")
-            if not root then return end
+            if not root then 
+                cleanupFlight()
+                pcall(function() FlightToggle:Set(false) end)
+                return 
+            end
+            
+            -- Remove any existing velocity
+            for _, obj in ipairs(root:GetChildren()) do
+                if obj.Name == "FlightVelocity" then
+                    obj:Destroy()
+                end
+            end
             
             flightBodyVelocity = Instance.new("BodyVelocity")
             flightBodyVelocity.Name = "FlightVelocity"
@@ -1326,16 +1601,16 @@ if game.PlaceId == 10595058975 then
             -- Flight control loop with look direction movement
             flightConn = RunService.Heartbeat:Connect(function()
                 if not FLIGHT_ENABLED or not flightBodyVelocity or not flightBodyVelocity.Parent then 
-                    if flightConn then 
-                        flightConn:Disconnect() 
-                        flightConn = nil 
-                    end
+                    cleanupFlight()
                     return 
                 end
                 
                 local char = player.Character
                 local root = char and char:FindFirstChild("HumanoidRootPart")
-                if not root then return end
+                if not root then 
+                    cleanupFlight()
+                    return 
+                end
                 
                 -- Get movement direction from camera look direction
                 local cam = workspace.CurrentCamera
@@ -1383,16 +1658,13 @@ if game.PlaceId == 10595058975 then
     PlayerTab:CreateButton({
         Name = "Reset Flight (if stuck)",
         Callback = function()
-            if flightBodyVelocity then
-                flightBodyVelocity:Destroy()
-                flightBodyVelocity = nil
-            end
-            if flightConn then
-                flightConn:Disconnect()
-                flightConn = nil
-            end
+            cleanupFlight()
             FLIGHT_ENABLED = false
-            pcall(function() FlightToggle:Set(false) end)
+            pcall(function() 
+                if FlightToggle then 
+                    FlightToggle:Set(false) 
+                end 
+            end)
             Rayfield:Notify({
                 Title = "Flight Reset",
                 Content = "Flight system has been reset",
