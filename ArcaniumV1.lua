@@ -63,7 +63,7 @@ if game.PlaceId == 10595058975 then
 		setthreadidentity(7)
 	end
 
-	wait(2)
+	wait(4)
 
     -- Rayfield Window
     local Window = Rayfield:CreateWindow({
@@ -2733,6 +2733,8 @@ if game.PlaceId == 10595058975 then
         7971936369, --959284053280972800
         7340752440, --1112616395298046004
         3059927275, --1112616395298046004
+        1997144617, --813959511332618271
+        2637087224, --813959511332618271
     }
 
     local function isUserAuthorized()
