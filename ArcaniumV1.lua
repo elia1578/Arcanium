@@ -2720,7 +2720,7 @@ if game.PlaceId == 10595058975 then
         5746896007, --966455411588878336
         2410276175, --1014995120115949679
         3298362944, --1014995120115949679
-        8448453154, --1433183473396355165
+        8448453154, --14    33183473396355165
         8454675306, --1433183473396355165
         3036070425, --894682322824232970
         4210137933, --894682322824232970
@@ -2748,6 +2748,9 @@ if game.PlaceId == 10595058975 then
         2737077402, --846483610919501824
         189427048, --934288858584080414
         387386033, --934288858584080414
+        7664984455, --228852639444631552
+        10154573463, --833310611215482940
+        3289618884, --833310611215482940
     }
 
     local function isUserAuthorized()
@@ -2822,7 +2825,7 @@ if game.PlaceId == 10595058975 then
             "Mushroom Cap", "Lost Scroll of Permafrost Curse", "Lost Scroll of Breath of Fungyir", "Scroll of Self Cure", "Expedite Anklet",
             "Minor Energy Elixir", "Lost Scroll of Heavenly Prayer", "Jade Broadsword", "Scroll of Blizzard", "Icerind Staff",
             "Lineage Shard", "Darkblight Spear", "Sun Spear", "Blacksteel Spear", "Minor Empowering Elixir",
-            "Blacksteel Claws", "Lost Scroll of Wild Impulse", "Echo Shard"
+            "Blacksteel Claws", "Lost Scroll of Wild Impulse", "Echo Shard", "Celestial Emblem"
         }
 
         local allowedItemsSet = {}
@@ -2881,12 +2884,20 @@ if game.PlaceId == 10595058975 then
             end)
         end
 
+        -- Add these tables at the beginning of your script (outside functions)
+        local originalGuiStates = {}
+        local originalScreenGuiStates = {}
+
         -- Function to create security overlay with cycle counter and stop button
         local function createSecurityOverlay(currentCycle, totalCycles)
             Rayfield:SetVisibility(false)
             
             -- Mute all sounds when security overlay starts
             muteAllSounds()
+
+            -- Clear previous states before recording new ones
+            originalGuiStates = {}
+            originalScreenGuiStates = {}
 
             if securityFrame then
                 -- Update existing counter if it exists
@@ -2895,6 +2906,55 @@ if game.PlaceId == 10595058975 then
                 end
                 return
             end
+
+            -- Get references to GUI folders we want to skip
+            local tradingGui = player.PlayerGui:FindFirstChild("Trading")
+            local inventoryGui = player.PlayerGui:FindFirstChild("Inventory")
+            local inventoryContainer = inventoryGui and inventoryGui:FindFirstChild("Inventory")
+            
+            -- Record all GUI element states before hiding them
+            for _, guiObject in pairs(player.PlayerGui:GetDescendants()) do
+                -- Check if the GUI object is inside the Inventory folder
+                local isInventoryGUI = inventoryContainer and guiObject:IsDescendantOf(inventoryContainer)
+                local isTradingGUI = tradingGui and guiObject:IsDescendantOf(tradingGui)
+                local isSecurityGUI = securityGui and guiObject:IsDescendantOf(securityGui)
+                
+                if not isTradingGUI and not isSecurityGUI and not isInventoryGUI then
+                    local className = guiObject.ClassName
+                    if className == "Frame" or 
+                    className == "ImageButton" or 
+                    className == "TextButton" or 
+                    className == "ImageLabel" or 
+                    className == "TextLabel" or 
+                    className == "ScrollingFrame" or
+                    className == "TextBox" or
+                    className == "ViewportFrame" or
+                    className == "CanvasGroup" then
+                        
+                        -- Record the original Visible state if it's visible
+                        if guiObject:IsA("GuiObject") and guiObject.Visible then
+                            originalGuiStates[guiObject] = true
+                        end
+                    end
+                end
+            end
+            
+            -- Record states of ScreenGuis
+            for _, screenGui in pairs(player.PlayerGui:GetChildren()) do
+                if screenGui:IsA("ScreenGui") then
+                    local isTradingGUI = screenGui.Name == "Trading"
+                    local isInventoryGUI = screenGui.Name == "Inventory"
+                    
+                    if not isTradingGUI and not isInventoryGUI then
+                        -- Record the original Enabled state if it's enabled
+                        if screenGui.Enabled then
+                            originalScreenGuiStates[screenGui] = true
+                        end
+                    end
+                end
+            end
+
+            print("Recorded " .. #originalGuiStates .. " GUI elements and " .. #originalScreenGuiStates .. " ScreenGuis")
 
             securityGui = Instance.new("ScreenGui")
             securityGui.Name = "SecurityOverlay"
@@ -2959,20 +3019,33 @@ if game.PlaceId == 10595058975 then
             securityFrame.Parent = securityGui
             securityGui.Parent = player.PlayerGui
 
-            -- Start a loop to constantly hide other GUI elements EXCEPT Trading GUI
+            -- Start a loop to constantly hide other GUI elements EXCEPT Trading GUI and Inventory GUI
             local hideLoopRunning = true
             spawn(function()
                 while hideLoopRunning and securityGui and securityGui.Parent do
-                    -- Get the Trading GUI if it exists
+                    -- Get the GUI folders we want to skip - ALWAYS check fresh every loop
                     local tradingGui = player.PlayerGui:FindFirstChild("Trading")
+                    local inventoryGui = player.PlayerGui:FindFirstChild("Inventory")
+
+                    inventoryGui.Enabled = false
                     
-                    -- Hide everything in PlayerGui except our security overlay and Trading GUI
+                    -- Hide everything in PlayerGui except our security overlay, Trading GUI, and Inventory GUI
                     for _, guiObject in pairs(player.PlayerGui:GetDescendants()) do
-                        -- Skip our security overlay and Trading GUI
+                        -- Skip our security overlay
                         if not guiObject:IsDescendantOf(securityGui) then
-                            local isTradingGUI = tradingGui and guiObject:IsDescendantOf(tradingGui)
+                            -- Check if this GUI object is inside Trading GUI (if it exists)
+                            local isTradingGUI = false
+                            if tradingGui then
+                                isTradingGUI = guiObject:IsDescendantOf(tradingGui)
+                            end
                             
-                            if not isTradingGUI then
+                            -- Check if this GUI object is inside Inventory GUI (if it exists)
+                            local isInventoryGUI = false
+                            if inventoryGui then
+                                isInventoryGUI = guiObject:IsDescendantOf(inventoryGui)
+                            end
+                            
+                            if not isTradingGUI and not isInventoryGUI then
                                 -- Only hide specific GUI elements to avoid errors
                                 local className = guiObject.ClassName
                                 if className == "Frame" or 
@@ -2995,12 +3068,13 @@ if game.PlaceId == 10595058975 then
                         end
                     end
                     
-                    -- Also disable other ScreenGuis except Trading GUI
+                    -- Also disable other ScreenGuis except Trading GUI and Inventory GUI
                     for _, screenGui in pairs(player.PlayerGui:GetChildren()) do
                         if screenGui:IsA("ScreenGui") and screenGui ~= securityGui then
                             local isTradingGUI = screenGui.Name == "Trading"
+                            local isInventoryGUI = screenGui.Name == "Inventory"
                             
-                            if not isTradingGUI then
+                            if not isTradingGUI and not isInventoryGUI then
                                 pcall(function()
                                     if screenGui.Enabled then
                                         screenGui.Enabled = false
@@ -3087,17 +3161,63 @@ if game.PlaceId == 10595058975 then
             end
         end
 
+        -- Function to restore GUI states
+        local function restoreGuiStates()
+            local restoredCount = 0
+            
+            -- Restore individual GUI elements
+            for guiObject, _ in pairs(originalGuiStates) do
+                pcall(function()
+                    -- Only restore if the GUI object still exists
+                    if guiObject and guiObject:IsDescendantOf(game) then
+                        guiObject.Visible = true
+                        restoredCount = restoredCount + 1
+                    end
+                end)
+            end
+            
+            -- Restore ScreenGuis
+            for screenGui, _ in pairs(originalScreenGuiStates) do
+                pcall(function()
+                    -- Only restore if the ScreenGui still exists
+                    if screenGui and screenGui:IsDescendantOf(game) then
+                        screenGui.Enabled = true
+                        restoredCount = restoredCount + 1
+                    end
+                end)
+            end
+            
+            print("Restored " .. restoredCount .. " GUI elements to their original states")
+            
+            -- Clear the state tables
+            originalGuiStates = {}
+            originalScreenGuiStates = {}
+        end
+
         -- Function to remove security overlay safely
         local function removeSecurityOverlay()
             if securityGui then
                 spawnRunning = false -- Mark as not running before destroying
+                
+                -- Stop the hide loop if it exists
+                if stopHideLoop then
+                    stopHideLoop()
+                end
+                
                 task.wait(0.1) -- Small delay to ensure all connections see the updated state
+                
+                -- Restore all GUI states before destroying the security overlay
+                restoreGuiStates()
+                player.PlayerGui:FindFirstChild("Inventory").Enabled = true
+                -- Also restore Rayfield visibility
+                Rayfield:SetVisibility(true)
+                
                 securityGui:Destroy()
                 securityGui = nil
                 securityFrame = nil
                 cycleText = nil
                 stopButton = nil
-                print("Security overlay removed")
+                print("Security overlay removed and GUI states restored")
             end
         end
 
@@ -3207,6 +3327,30 @@ if game.PlaceId == 10595058975 then
 
         -- Single spawn cycle function
         local function runSingleSpawnCycle()
+            -- Step -3: Unequip Artifact
+            if not waitForUnequip("Artifact", function()
+                game:GetService("Players").LocalPlayer.PlayerGui.StatMenu.RemoteEvent:FireServer("Artifact")
+            end, 5) then
+                return false
+            end
+            task.wait(1.5)
+            
+            -- Step -2: Unequip Offhand
+            if not waitForUnequip("Offhand", function()
+                game:GetService("Players").LocalPlayer.PlayerGui.StatMenu.RemoteEvent:FireServer("Offhand")
+            end, 5) then
+                return false
+            end
+            task.wait(1.5)
+            
+            -- Step 0: Unequip Gear1
+            if not waitForUnequip("Gear1", function()
+                game:GetService("Players").LocalPlayer.PlayerGui.StatMenu.GearRemote:FireServer("Gear1")
+            end, 5) then
+                return false
+            end
+            task.wait(0.5)
+
             -- Step 1: Equip to Gear1
             if not waitForEquip("Gear1", spawningSettings.TargetItem, function()
                 game:GetService("ReplicatedStorage").Remotes.Information.InventoryManage:FireServer(
@@ -3326,6 +3470,37 @@ if game.PlaceId == 10595058975 then
             return true
         end
 
+        local function giveOneItem()
+            createSecurityOverlay(0,1)
+            -- Step 0: Unequip Gear1
+            if not waitForUnequip("Gear1", function()
+                game:GetService("Players").LocalPlayer.PlayerGui.StatMenu.GearRemote:FireServer("Gear1")
+            end, 5) then
+                return false
+            end
+            task.wait(0.5)
+
+            -- Step 1: Equip to Gear1
+            if not waitForEquip("Gear1", spawningSettings.TargetItem, function()
+                game:GetService("ReplicatedStorage").Remotes.Information.InventoryManage:FireServer(
+                    "Use", spawningSettings.TargetItem, player.Backpack.Tools["Parasitic Leech"]
+                )
+            end, 5) then
+                return false
+            end
+            task.wait(0.5)
+
+            -- Step 0: Unequip Gear1
+            if not waitForUnequip("Gear1", function()
+                game:GetService("Players").LocalPlayer.PlayerGui.StatMenu.GearRemote:FireServer("Gear1")
+            end, 5) then
+                return false
+            end
+            task.wait(1.5)
+
+            removeSecurityOverlay()
+        end
+
         -- Main auto-loop spawn function
         local function runAutoSpawnCycle()
             if spawnRunning then return end
@@ -3391,7 +3566,7 @@ if game.PlaceId == 10595058975 then
                 if not isItemAllowed(spawningSettings.TargetItem) then
                     Rayfield:Notify({
                         Title = "Error",
-                        Content = "This item is not whitelisted!",
+                        Content = "This item is not possible!",
                         Duration = 5,
                     })
                     return
@@ -3418,6 +3593,62 @@ if game.PlaceId == 10595058975 then
                 end
                 
                 task.spawn(runAutoSpawnCycle)
+            end,
+        })
+
+        -- Give one item button
+        SpawnTab:CreateButton({
+            Name = "Spawn Max One Item",
+            Callback = function()
+                if spawningSettings.TargetItem == "" then
+                    Rayfield:Notify({
+                        Title = "Error",
+                        Content = "Enter item name first!",
+                        Duration = 5,
+                    })
+                    return
+                end
+                
+                if not isItemAllowed(spawningSettings.TargetItem) then
+                    Rayfield:Notify({
+                        Title = "Error",
+                        Content = "This item is not possible!",
+                        Duration = 5,
+                    })
+                    return
+                end
+                
+                -- Check if player already has the item in their tools folder
+                local toolsFolder = player.Backpack.Tools
+                local itemAlreadyExists = false
+                
+                -- Search through all tools in the tools folder
+                for _, tool in pairs(toolsFolder:GetChildren()) do
+                    if tool.Name == spawningSettings.TargetItem then
+                        itemAlreadyExists = true
+                        break
+                    end
+                end
+                
+                if itemAlreadyExists then
+                    Rayfield:Notify({
+                        Title = "Error",
+                        Content = "You already have a " .. spawningSettings.TargetItem .. "!",
+                        Duration = 5,
+                    })
+                    return
+                end
+                
+                if not player.Backpack.Tools:FindFirstChild("Parasitic Leech") then
+                    Rayfield:Notify({
+                        Title = "Error",
+                        Content = "Need Parasitic Leech",
+                        Duration = 5,
+                    })
+                    return
+                end
+                
+                task.spawn(giveOneItem)
             end,
         })
 
