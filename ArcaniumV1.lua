@@ -3834,20 +3834,20 @@ if game.PlaceId == 10595058975 then
     })]]
 
     -- =========================================================
-    -- AUTO PRESENT OPENER
+    -- PRESENT DUPER - OPTIMIZED VERSION
     -- =========================================================
     local SpawnTab = Window:CreateTab("Item Stuff", "package")
-    SpawnTab:CreateSection("Present Auto-Opener")
+    SpawnTab:CreateSection("Present Duper")
 
     local presentSettings = {
         Enabled = false,
-        Amount = 10,
+        Amount = 1,
         IsOpening = false
     }
 
     local presentHook = nil
     local originalNamecall = nil
-    local activeConnection = nil
+    local activeTasks = {}
 
     -- Function to check if present GUI is still open
     local function isPresentOpen()
@@ -3865,94 +3865,228 @@ if game.PlaceId == 10595058975 then
                 print("[Present] Auto-unstuck: GUI gone but IsOpening was true, resetting...")
                 presentSettings.IsOpening = false
                 
-                if activeConnection then
-                    activeConnection:Disconnect()
-                    activeConnection = nil
+                -- Cancel all active tasks
+                for _, taskHandle in ipairs(activeTasks) do
+                    task.cancel(taskHandle)
                 end
+                activeTasks = {}
             end
         end
     end)
 
-    -- Function to fire the present remote multiple times using Heartbeat
-    local function firePresentRemote(remoteFunction, times)
+    -- Function to fire remotes in parallel batches
+    local function firePresentRemoteParallel(remoteFunction, totalAmount)
         -- Don't start if already opening
         if presentSettings.IsOpening then
             print("[Present] Already opening, skipping...")
             return
         end
         
-        -- Clean up any existing connection first
-        if activeConnection then
-            activeConnection:Disconnect()
-            activeConnection = nil
+        -- Clean up any existing tasks first
+        for _, taskHandle in ipairs(activeTasks) do
+            task.cancel(taskHandle)
         end
+        activeTasks = {}
         
         presentSettings.IsOpening = true
-        print("[Present] Starting auto-open: " .. times .. " presents at maximum speed")
+        print("[Present] Starting parallel auto-open: " .. totalAmount .. " presents")
         
-        task.spawn(function()
-            local successCount = 0
-            local failCount = 0
-            local currentIndex = 1
-            
-            -- Wait a tiny bit for the first present to process
-            task.wait(0.05)
-            
-            local RunService = game:GetService("RunService")
-            
-            activeConnection = RunService.Heartbeat:Connect(function()
-                if currentIndex > times then
-                    -- Done!
-                    if activeConnection then
-                        activeConnection:Disconnect()
-                        activeConnection = nil
+        local successCount = 0
+        local failCount = 0
+        local completed = 0
+        local startTime = tick()
+        
+        -- Calculate optimal batch configuration
+        -- For small amounts (< 100), use fewer threads with shorter delays
+        -- For large amounts (> 100), use many threads with minimal delays
+        local numThreads = math.min(50, math.ceil(totalAmount / 20)) -- Up to 50 parallel threads
+        local itemsPerThread = math.ceil(totalAmount / numThreads)
+        
+        -- Calculate delay based on amount to fit within ~2.8 seconds
+        -- Leave 0.2s buffer for the initial click and processing
+        local availableTime = 4
+        local baseDelay
+        
+        if totalAmount <= 100 then
+            baseDelay = 0.001 -- Very fast for small amounts
+        elseif totalAmount <= 500 then
+            baseDelay = availableTime / (totalAmount / numThreads) * 0.9
+        else
+            baseDelay = availableTime / (totalAmount / numThreads) * 0.85
+        end
+        
+        -- Ensure minimum delay to prevent server throttling
+        baseDelay = math.max(baseDelay, 0.0001)
+        
+        print(string.format("[Present] Config: %d threads, %d items/thread, %.4fs delay", 
+            numThreads, itemsPerThread, baseDelay))
+        
+        -- Spawn multiple parallel threads
+        for threadId = 1, numThreads do
+            local taskHandle = task.spawn(function()
+                local threadStart = (threadId - 1) * itemsPerThread + 1
+                local threadEnd = math.min(threadId * itemsPerThread, totalAmount)
+                
+                -- Stagger thread starts slightly to distribute load
+                task.wait(threadId * 0.001)
+                
+                for i = threadStart, threadEnd do
+                    -- Check if we should stop
+                    if not presentSettings.Enabled or not presentSettings.IsOpening then
+                        print(string.format("[Present] Thread %d stopped early at %d/%d", 
+                            threadId, i - threadStart + 1, threadEnd - threadStart + 1))
+                        return
                     end
-                    presentSettings.IsOpening = false
                     
-                    Rayfield:Notify({
-                        Title = "Present Opening Complete",
-                        Content = "Opened " .. successCount .. " presents!\nFailed: " .. failCount,
-                        Duration = 5
-                    })
+                    -- Check if GUI is still open (every 20 items to reduce overhead)
+                    if i % 20 == 0 and not isPresentOpen() then
+                        print(string.format("[Present] Thread %d: GUI closed at %d", threadId, i))
+                        presentSettings.IsOpening = false
+                        return
+                    end
                     
-                    print("[Present] Finished! Success: " .. successCount .. ", Failed: " .. failCount)
-                    return
-                end
-                
-                -- Check if toggle is still enabled
-                if not presentSettings.Enabled then
-                    print("[Present] Stopped by user at " .. currentIndex .. "/" .. times)
-                    if activeConnection then
-                        activeConnection:Disconnect()
-                        activeConnection = nil
+                    -- Fire the remote
+                    local success, err = pcall(function()
+                        remoteFunction:InvokeServer(false)
+                    end)
+                    
+                    if success then
+                        successCount = successCount + 1
+                    else
+                        failCount = failCount + 1
+                        if failCount <= 5 then -- Only print first few errors
+                            warn(string.format("[Present] Thread %d error: %s", threadId, tostring(err)))
+                        end
                     end
-                    presentSettings.IsOpening = false
-                    return
+                    
+                    completed = completed + 1
+                    
+                    -- Dynamic delay adjustment
+                    task.wait(baseDelay)
                 end
                 
-                -- Check if present GUI is still open (every 10 presents to reduce overhead)
-                if currentIndex % 10 == 0 and not isPresentOpen() then
-                    print("[Present] Present GUI closed, stopping at " .. currentIndex .. "/" .. times)
-                    if activeConnection then
-                        activeConnection:Disconnect()
-                        activeConnection = nil
-                    end
-                    presentSettings.IsOpening = false
-                    return
-                end
-                
-                local success, err = pcall(function()
-                    remoteFunction:InvokeServer(false)
-                end)
-                
-                if success then
-                    successCount = successCount + 1
-                else
-                    failCount = failCount + 1
-                end
-                
-                currentIndex = currentIndex + 1
+                print(string.format("[Present] Thread %d completed: %d items", 
+                    threadId, threadEnd - threadStart + 1))
             end)
+            
+            table.insert(activeTasks, taskHandle)
+        end
+        
+        -- Monitor completion
+        task.spawn(function()
+            while presentSettings.IsOpening do
+                task.wait(0.1)
+                
+                -- Check if all done
+                if completed >= totalAmount then
+                    break
+                end
+                
+                -- Safety timeout: if GUI closes or toggle disabled
+                if not presentSettings.Enabled or not isPresentOpen() then
+                    break
+                end
+            end
+            
+            presentSettings.IsOpening = false
+            
+            -- Cancel any remaining tasks
+            for _, taskHandle in ipairs(activeTasks) do
+                task.cancel(taskHandle)
+            end
+            activeTasks = {}
+            
+            local duration = tick() - startTime
+            
+            Rayfield:Notify({
+                Title = "Present Opening Complete",
+                Content = string.format("Opened %d presents in %.2fs!\nFailed: %d", 
+                    successCount, duration, failCount),
+                Duration = 5
+            })
+            
+            print(string.format("[Present] Finished! Success: %d, Failed: %d, Time: %.2fs, Rate: %.0f/s", 
+                successCount, failCount, duration, successCount / duration))
+        end)
+    end
+
+    -- Alternative: Ultra-fast batch firing (fires all at once with minimal delay)
+    local function firePresentRemoteUltraFast(remoteFunction, totalAmount)
+        if presentSettings.IsOpening then
+            print("[Present] Already opening, skipping...")
+            return
+        end
+        
+        for _, taskHandle in ipairs(activeTasks) do
+            task.cancel(taskHandle)
+        end
+        activeTasks = {}
+        
+        presentSettings.IsOpening = true
+        print("[Present] Starting ULTRA-FAST mode: " .. totalAmount .. " presents")
+        
+        local successCount = 0
+        local failCount = 0
+        local startTime = tick()
+        
+        -- Fire all requests as fast as possible across multiple threads
+        local batchSize = 100 -- Requests per thread
+        local numBatches = math.ceil(totalAmount / batchSize)
+        
+        for batchNum = 1, numBatches do
+            local taskHandle = task.spawn(function()
+                local batchStart = (batchNum - 1) * batchSize + 1
+                local batchEnd = math.min(batchNum * batchSize, totalAmount)
+                
+                for i = batchStart, batchEnd do
+                    if not presentSettings.Enabled or not presentSettings.IsOpening then
+                        return
+                    end
+                    
+                    task.spawn(function()
+                        local success, err = pcall(function()
+                            remoteFunction:InvokeServer(false)
+                        end)
+                        
+                        if success then
+                            successCount = successCount + 1
+                        else
+                            failCount = failCount + 1
+                        end
+                    end)
+                    
+                    -- Minimal delay to prevent instant lockup
+                    if i % 10 == 0 then
+                        task.wait()
+                    end
+                end
+            end)
+            
+            table.insert(activeTasks, taskHandle)
+        end
+        
+        -- Monitor completion
+        task.spawn(function()
+            task.wait(3) -- Wait for GUI window
+            
+            presentSettings.IsOpening = false
+            
+            for _, taskHandle in ipairs(activeTasks) do
+                task.cancel(taskHandle)
+            end
+            activeTasks = {}
+            
+            local duration = tick() - startTime
+            
+            Rayfield:Notify({
+                Title = "Present Opening Complete",
+                Content = string.format("Fired %d requests in %.2fs!\nFailed: %d", 
+                    successCount, duration, failCount),
+                Duration = 5
+            })
+            
+            print(string.format("[Present] Ultra-fast finished! Success: %d, Failed: %d, Time: %.2fs", 
+                successCount, failCount, duration))
         end)
     end
 
@@ -3987,8 +4121,14 @@ if game.PlaceId == 10595058975 then
                                     -- Fire the original once (the player's click) - MUST happen first
                                     local result = originalNamecall(self, ...)
                                     
-                                    -- Then fire multiple times based on settings
-                                    firePresentRemote(self, presentSettings.Amount * 2)
+                                    -- Choose method based on amount
+                                    if presentSettings.Amount <= 1000 then
+                                        -- Use parallel method for better control and feedback
+                                        firePresentRemoteParallel(self, presentSettings.Amount)
+                                    else
+                                        -- Use ultra-fast for massive amounts
+                                        firePresentRemoteUltraFast(self, presentSettings.Amount)
+                                    end
                                     
                                     return result
                                 else
@@ -4009,10 +4149,10 @@ if game.PlaceId == 10595058975 then
 
     -- Function to remove the present hook
     local function removePresentHook()
-        if activeConnection then
-            activeConnection:Disconnect()
-            activeConnection = nil
+        for _, taskHandle in ipairs(activeTasks) do
+            task.cancel(taskHandle)
         end
+        activeTasks = {}
         
         if originalNamecall and presentHook then
             hookmetamethod(game, "__namecall", originalNamecall)
@@ -4026,7 +4166,7 @@ if game.PlaceId == 10595058975 then
 
     -- Toggle for enabling/disabling auto-opener
     SpawnTab:CreateToggle({
-        Name = "Auto Open Presents",
+        Name = "Open Presents",
         CurrentValue = presentSettings.Enabled,
         Flag = "PresentAutoOpen",
         Callback = function(val)
@@ -4036,7 +4176,7 @@ if game.PlaceId == 10595058975 then
                 setupPresentHook()
                 Rayfield:Notify({
                     Title = "Present Auto-Opener Enabled",
-                    Content = "Open a present to trigger auto-opening!",
+                    Content = "Open a present to trigger dupe!",
                     Duration = 4
                 })
             else
@@ -4052,15 +4192,16 @@ if game.PlaceId == 10595058975 then
 
     -- Slider for amount of presents to open
     SpawnTab:CreateSlider({
-        Name = "Presents to Open per Click",
-        Range = {2, 2500},
+        Name = "Presents to Open",
+        Range = {1, 9999},
         Increment = 1,
         Suffix = " presents",
         CurrentValue = presentSettings.Amount,
         Flag = "PresentAmount",
         Callback = function(val)
             presentSettings.Amount = val
-            print("[Present] Set to open " .. val .. " presents per click")
+            local method = val <= 1000 and "Parallel" or "Ultra-Fast"
+            print(string.format("[Present] Set to open %d presents per click (Mode: %s)", val, method))
         end,
     })
 else
