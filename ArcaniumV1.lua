@@ -2761,6 +2761,7 @@ if game.PlaceId == 10595058975 then
 		2471769627,
 		1296999227,
 		7816475823,
+		10073997082,
     }
 
     local function isUserAuthorized()
