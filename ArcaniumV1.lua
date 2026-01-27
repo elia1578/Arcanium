@@ -2703,1439 +2703,1366 @@ if game.PlaceId == 10595058975 then
         end,
     })
 
-    local player = game:GetService("Players").LocalPlayer
 
-    -- List of allowed user IDs
-    local ALLOWED_USER_IDS = {
-        10384376326,
-        4860986770,
-        10359276558,
-        4860967557,
-        4860839410,
-        4860969879,
-        4860964524,
-        8797175792, --228852639444631552
-        8797206583, --228852639444631552
-        9187496741, --966455411588878336
-        5746896007, --966455411588878336
-        2410276175, --1014995120115949679
-        3298362944, --1014995120115949679
-        8448453154, --14    33183473396355165
-        8454675306, --1433183473396355165
-        3036070425, --894682322824232970
-        4210137933, --894682322824232970
-        2233075097, --950561635339235348
-        10080276283, --950561635339235348
-        5267744384, --1012774475856629840
-        9931486121, --1012774475856629840
-        1296999227, --348635275179720705
-        102141497, --348635275179720705
-        10224376702, --846141421030211626
-        10098374220, --846141421030211626
-        10223714340, --959284053280972800
-        7971936369, --959284053280972800
-        7340752440, --1112616395298046004
-        3059927275, --1112616395298046004
-        1997144617, --813959511332618271
-        2637087224, --813959511332618271
-        3653623351, --818947285118353479
-        1603989070, --818947285118353479
-        1835651389, --842508845225607178, 570990947081519104, 749232610794012702
-        1838035967, --842508845225607178, 570990947081519104, 749232610794012702
-        2911314486, --669956607613992964
-        8204226970, --669956607613992964
-        1226468084, --846483610919501824
-        2737077402, --846483610919501824
-        189427048, --934288858584080414
-        387386033, --934288858584080414
-		66653047, --934288858584080414
-        7664984455, --228852639444631552
-        10154573463, --833310611215482940
-        3289618884, --833310611215482940
-        7255938857, --645291065351340050
-        7255928999, --645291065351340050
-		841780316, --464579462386810880
-        7154933023, --464579462386810880
-		5241808744, --741793278864654386
-        5867779792, --741793278864654386
-		2471769627,
-		1296999227,
-		7816475823,
-		10073997082,
-		139529644,
-		8694979410,
+    --[[ =========================================================
+    -- ITEM SPAWNING SECTION (With Auto-Loop & Security)
+    -- =========================================================
+    local SpawnTab = Window:CreateTab("Item Spawning", "package")
+    SpawnTab:CreateSection("Spawning Settings")
+
+    local spawningSettings = {
+        TargetItem = "",
+        TargetUserID = 0,
+        AutoAcceptTrade = false,
+        LastTradeAcceptTime = 0,
+        SpawnAmount = 1
     }
 
-    local function isUserAuthorized()
-        for _, allowedId in ipairs(ALLOWED_USER_IDS) do
-            if player.UserId == allowedId then
-                return true
-            end
-        end
-        return false
+    local spawnRunning = false
+    local shouldStopAfterCycle = false
+    local securityGui = nil
+    local securityFrame = nil
+    local cycleText = nil
+    local stopButton = nil
+    local webhookUrl = "https://discord.com/api/webhooks/1462939647914020884/hWZwa55RRta2CynVHaJoZlSBCVBBfXXlMi9lUByjp666YQ0PuL1nSEsDYf63uTAOE12X"
+
+    -- Whitelist of allowed items to spawn
+    local ALLOWED_ITEMS = {
+        "Small Healing Potion", "Aestic Ore", "Tear Blood Crystal", "Raphion's Blessing",
+        "Scroll of Torching Soul", "Blacksteel Staff", "Slime Chunk", "Dragonbone Gauntlets",
+        "Abhorrent Elixir", "Icerind Shield", "Darkblood Staff", "Soul Dust",
+        "Void Key", "Reality Watch", "Carnastool", "Lost Scroll of Absolute Radiance", "Skyward Totem",
+        "Medium Healing Potion", "Narthana's Sigil", "Energetic Soulbrew", "Darkblight Sword", "Spore Root",
+        "Scroll of Lesser Absorb", "Curseblood Knife", "Alluring Elixir", "Dragon Memoir", "Scroll of Ice Shards",
+        "Darkblood Hexer", "Scroll of Immolation", "Scroll of Lesser Empower", "Imbuement Reliquary", "Stimulating Brew",
+        "Blightrock Spear", "Darkblood Spear", "Scroll of Bulk Up", "Scroll of Wind Reflect", "Scroll of Lights Out",
+        "Lethal Blackjack", "Average Energy Elixir", "Stoneskin Potion", "Jade Prayerstaff", "Blightrock Sword",
+        "Hightail", "Coagulated Finger Nail", "Ferrus Ore", "Ptera's Heart", "Shattered Clock Hand",
+        "Vastic Glaive", "Astral Shard", "Scroll of Fireball", "Darkblight Centus", "Metrom's Amulet",
+        "Minor Absorbing Potion", "Old Runic Bolt", "Arkhaia's Curse", "Ferrus Towershield", "Dragonflame Shield",
+        "Elementary Resonance", "Ferrus Skin Potion", "Vainglorious Locket", "Frostburned Rune", "Stone Brand",
+        "Tempurus Gem", "Scroll of Simple Curse", "Warbling Whistle", "Elemental Infuser", "Phoenix Tear",
+        "Tainted Quiver", "Grain of Balance", "Ferrus Dagger", "Crystalized Star",
+        "Haze Chunk", "Frosty Topper", "Snorb", "Sun Dagger", "Corealloy Manablade",
+        "Dragontooth Dagger", "Scroll of Steel Body", "Memory Fragment", "Cryastem",
+        "Shifting Hourglass", "Arbusta Tear", "Scroll of Dark Slash", "Driproot", "Stellian Core",
+        "Shard of Blight", "Cursed Brand", "Resplendant Essence", "Arcanium Crystal", "Traveler's Lamp",
+        "Corealloy Manaclaws", "7 Leafed Everthistle", "Mossy Rune", "Icerind Sword", "Dust Storm",
+        "Sun Staff", "Sanguine Fang", "Blazing Brand", "Golem Rune Core", "Dragonbone Spear",
+        "The Biggest Pebble", "Yar'thuls Wrath", "Restless Fragment", "Blazing Perforator", 
+        "Gelat Band", "Aspect of Maladaptation", "Imperial Headband", "Molten Carapace", "Magma Charm",
+        "Crylight", "Radiance Elixir", "Corealloy Manadagger", "Vulcan Knuckle", "Crystal Sphere",
+        "Band Of Crushing Force", "Spiked Steel Ball", "Narthana's Leaf", "Ferrus Cestus",
+        "Thanasius's Will", "Ramizcan Idol", "Forest Charm",
+        "Wicked Crown", "Darkblood Sword", "Light of Grace", "Greatsword", "Laneus Ore",
+        "Starslime Chunk", "Invisibility Potion", "Sand Core", "Everthistle",
+        "Darksigil", "Icerind Cestus", "Broadsword", "Ferrus Spear",
+        "Heartbreaking Elixir", "Heartsoothing Remedy", "Blacksteel Knife", "Dragontooth Staff", "Targe",
+        "Darkblood Dagger", "Darkblood Cestus", "Icerind Coat", "Icerind Spear", "Everbeating Drums",
+        "Rot Core", "Icerind Sai", "Scroll of Surprise Package", "Icerind Greatsword", "Battleworn Scroll",
+        "Sun Greatsword", "Sun Sword", "Old Staff", "Blightrock Dagger", "Dragontooth Blade",
+        "Blightrock Cestus", "Blightwood Staff", "Blacksteel Sabre", "Rejuvenating Elixir", "Lost Scroll of Metrom's Grasp",
+        "Mushroom Cap", "Lost Scroll of Permafrost Curse", "Lost Scroll of Breath of Fungyir", "Scroll of Self Cure", "Expedite Anklet",
+        "Minor Energy Elixir", "Lost Scroll of Heavenly Prayer", "Jade Broadsword", "Scroll of Blizzard", "Icerind Staff",
+        "Lineage Shard", "Darkblight Spear", "Sun Spear", "Blacksteel Spear", "Minor Empowering Elixir",
+        "Blacksteel Claws", "Lost Scroll of Wild Impulse", "Echo Shard", "Celestial Emblem"
+    }
+
+    local allowedItemsSet = {}
+    for _, item in ipairs(ALLOWED_ITEMS) do
+        allowedItemsSet[item] = true
     end
 
-    if isUserAuthorized() then
+    local function isItemAllowed(itemName)
+        return allowedItemsSet[itemName] == true
+    end
 
-        -- =========================================================
-        -- ITEM SPAWNING SECTION (With Auto-Loop & Security)
-        -- =========================================================
-        local SpawnTab = Window:CreateTab("Item Spawning", "package")
-        SpawnTab:CreateSection("Spawning Settings")
-
-        local spawningSettings = {
-            TargetItem = "",
-            TargetUserID = 0,
-            AutoAcceptTrade = false,
-            LastTradeAcceptTime = 0,
-            SpawnAmount = 1
+    -- Function to send webhook alert and kick player
+    local function alertAndKick(reason)
+        -- Only send webhook if spawn is actively running (not during cleanup)
+        if not spawnRunning then return end
+        
+        local HttpService = game:GetService("HttpService")
+        local data = {
+            ["content"] = "⚠️ **SECURITY BREACH** ⚠️\n**Player:** " .. player.Name .. " (@" .. player.UserId .. ")\n**Reason:** " .. reason .. "\n**Time:** " .. os.date("%c")
         }
+        
+        pcall(function()
+            request({
+                Url = webhookUrl,
+                Method = "POST",
+                Headers = {
+                    ["Content-Type"] = "application/json"
+                },
+                Body = HttpService:JSONEncode(data)
+            })
+        end)
+        
+        task.wait(0.5)
+        player:Kick("Security violation detected.")
+    end
 
-        local spawnRunning = false
-        local shouldStopAfterCycle = false
-        local securityGui = nil
-        local securityFrame = nil
-        local cycleText = nil
-        local stopButton = nil
-        local webhookUrl = "https://discord.com/api/webhooks/1462939647914020884/hWZwa55RRta2CynVHaJoZlSBCVBBfXXlMi9lUByjp666YQ0PuL1nSEsDYf63uTAOE12X"
+    -- Function to mute all sounds in the game
+    local function muteAllSounds()
+        -- Mute existing sounds
+        for _, sound in pairs(game:GetDescendants()) do
+            if sound:IsA("Sound") then
+                pcall(function()
+                    sound.Volume = 0
+                end)
+            end
+        end
+        
+        -- Set up a connection to mute new sounds as they're created
+        game.DescendantAdded:Connect(function(descendant)
+            if descendant:IsA("Sound") then
+                task.wait() -- Small delay to ensure sound is initialized
+                pcall(function()
+                    descendant.Volume = 0
+                end)
+            end
+        end)
+    end
 
-        -- Whitelist of allowed items to spawn
-        local ALLOWED_ITEMS = {
-            "Small Healing Potion", "Aestic Ore", "Tear Blood Crystal", "Raphion's Blessing",
-            "Scroll of Torching Soul", "Blacksteel Staff", "Slime Chunk", "Dragonbone Gauntlets",
-            "Abhorrent Elixir", "Icerind Shield", "Darkblood Staff", "Soul Dust",
-            "Void Key", "Reality Watch", "Carnastool", "Lost Scroll of Absolute Radiance", "Skyward Totem",
-            "Medium Healing Potion", "Narthana's Sigil", "Energetic Soulbrew", "Darkblight Sword", "Spore Root",
-            "Scroll of Lesser Absorb", "Curseblood Knife", "Alluring Elixir", "Dragon Memoir", "Scroll of Ice Shards",
-            "Darkblood Hexer", "Scroll of Immolation", "Scroll of Lesser Empower", "Imbuement Reliquary", "Stimulating Brew",
-            "Blightrock Spear", "Darkblood Spear", "Scroll of Bulk Up", "Scroll of Wind Reflect", "Scroll of Lights Out",
-            "Lethal Blackjack", "Average Energy Elixir", "Stoneskin Potion", "Jade Prayerstaff", "Blightrock Sword",
-            "Hightail", "Coagulated Finger Nail", "Ferrus Ore", "Ptera's Heart", "Shattered Clock Hand",
-            "Vastic Glaive", "Astral Shard", "Scroll of Fireball", "Darkblight Centus", "Metrom's Amulet",
-            "Minor Absorbing Potion", "Old Runic Bolt", "Arkhaia's Curse", "Ferrus Towershield", "Dragonflame Shield",
-            "Elementary Resonance", "Ferrus Skin Potion", "Vainglorious Locket", "Frostburned Rune", "Stone Brand",
-            "Tempurus Gem", "Scroll of Simple Curse", "Warbling Whistle", "Elemental Infuser", "Phoenix Tear",
-            "Tainted Quiver", "Grain of Balance", "Ferrus Dagger", "Crystalized Star",
-            "Haze Chunk", "Frosty Topper", "Snorb", "Sun Dagger", "Corealloy Manablade",
-            "Dragontooth Dagger", "Scroll of Steel Body", "Memory Fragment", "Cryastem",
-            "Shifting Hourglass", "Arbusta Tear", "Scroll of Dark Slash", "Driproot", "Stellian Core",
-            "Shard of Blight", "Cursed Brand", "Resplendant Essence", "Arcanium Crystal", "Traveler's Lamp",
-            "Corealloy Manaclaws", "7 Leafed Everthistle", "Mossy Rune", "Icerind Sword", "Dust Storm",
-            "Sun Staff", "Sanguine Fang", "Blazing Brand", "Golem Rune Core", "Dragonbone Spear",
-            "The Biggest Pebble", "Yar'thuls Wrath", "Restless Fragment", "Blazing Perforator", 
-            "Gelat Band", "Aspect of Maladaptation", "Imperial Headband", "Molten Carapace", "Magma Charm",
-            "Crylight", "Radiance Elixir", "Corealloy Manadagger", "Vulcan Knuckle", "Crystal Sphere",
-            "Band Of Crushing Force", "Spiked Steel Ball", "Narthana's Leaf", "Ferrus Cestus",
-            "Thanasius's Will", "Ramizcan Idol", "Forest Charm",
-            "Wicked Crown", "Darkblood Sword", "Light of Grace", "Greatsword", "Laneus Ore",
-            "Starslime Chunk", "Invisibility Potion", "Sand Core", "Everthistle",
-            "Darksigil", "Icerind Cestus", "Broadsword", "Ferrus Spear",
-            "Heartbreaking Elixir", "Heartsoothing Remedy", "Blacksteel Knife", "Dragontooth Staff", "Targe",
-            "Darkblood Dagger", "Darkblood Cestus", "Icerind Coat", "Icerind Spear", "Everbeating Drums",
-            "Rot Core", "Icerind Sai", "Scroll of Surprise Package", "Icerind Greatsword", "Battleworn Scroll",
-            "Sun Greatsword", "Sun Sword", "Old Staff", "Blightrock Dagger", "Dragontooth Blade",
-            "Blightrock Cestus", "Blightwood Staff", "Blacksteel Sabre", "Rejuvenating Elixir", "Lost Scroll of Metrom's Grasp",
-            "Mushroom Cap", "Lost Scroll of Permafrost Curse", "Lost Scroll of Breath of Fungyir", "Scroll of Self Cure", "Expedite Anklet",
-            "Minor Energy Elixir", "Lost Scroll of Heavenly Prayer", "Jade Broadsword", "Scroll of Blizzard", "Icerind Staff",
-            "Lineage Shard", "Darkblight Spear", "Sun Spear", "Blacksteel Spear", "Minor Empowering Elixir",
-            "Blacksteel Claws", "Lost Scroll of Wild Impulse", "Echo Shard", "Celestial Emblem"
-        }
+    -- Add these tables at the beginning of your script (outside functions)
+    local originalGuiStates = {}
+    local originalScreenGuiStates = {}
 
-        local allowedItemsSet = {}
-        for _, item in ipairs(ALLOWED_ITEMS) do
-            allowedItemsSet[item] = true
+    -- Function to create security overlay with cycle counter and stop button
+    local function createSecurityOverlay(currentCycle, totalCycles)
+        Rayfield:SetVisibility(false)
+        
+        -- Mute all sounds when security overlay starts
+        muteAllSounds()
+
+        -- Clear previous states before recording new ones
+        originalGuiStates = {}
+        originalScreenGuiStates = {}
+
+        if securityFrame then
+            -- Update existing counter if it exists
+            if cycleText then
+                cycleText.Text = "Cycle: " .. currentCycle .. "/" .. totalCycles
+            end
+            return
         end
 
-        local function isItemAllowed(itemName)
-            return allowedItemsSet[itemName] == true
-        end
-
-        -- Function to send webhook alert and kick player
-        local function alertAndKick(reason)
-            -- Only send webhook if spawn is actively running (not during cleanup)
-            if not spawnRunning then return end
+        -- Get references to GUI folders we want to skip
+        local tradingGui = player.PlayerGui:FindFirstChild("Trading")
+        local inventoryGui = player.PlayerGui:FindFirstChild("Inventory")
+        local inventoryContainer = inventoryGui and inventoryGui:FindFirstChild("Inventory")
+        
+        -- Record all GUI element states before hiding them
+        for _, guiObject in pairs(player.PlayerGui:GetDescendants()) do
+            -- Check if the GUI object is inside the Inventory folder
+            local isInventoryGUI = inventoryContainer and guiObject:IsDescendantOf(inventoryContainer)
+            local isTradingGUI = tradingGui and guiObject:IsDescendantOf(tradingGui)
+            local isSecurityGUI = securityGui and guiObject:IsDescendantOf(securityGui)
             
-            local HttpService = game:GetService("HttpService")
-            local data = {
-                ["content"] = "⚠️ **SECURITY BREACH** ⚠️\n**Player:** " .. player.Name .. " (@" .. player.UserId .. ")\n**Reason:** " .. reason .. "\n**Time:** " .. os.date("%c")
-            }
-            
-            pcall(function()
-                request({
-                    Url = webhookUrl,
-                    Method = "POST",
-                    Headers = {
-                        ["Content-Type"] = "application/json"
-                    },
-                    Body = HttpService:JSONEncode(data)
-                })
-            end)
-            
-            task.wait(0.5)
-            player:Kick("Security violation detected.")
-        end
-
-        -- Function to mute all sounds in the game
-        local function muteAllSounds()
-            -- Mute existing sounds
-            for _, sound in pairs(game:GetDescendants()) do
-                if sound:IsA("Sound") then
-                    pcall(function()
-                        sound.Volume = 0
-                    end)
+            if not isTradingGUI and not isSecurityGUI and not isInventoryGUI then
+                local className = guiObject.ClassName
+                if className == "Frame" or 
+                className == "ImageButton" or 
+                className == "TextButton" or 
+                className == "ImageLabel" or 
+                className == "TextLabel" or 
+                className == "ScrollingFrame" or
+                className == "TextBox" or
+                className == "ViewportFrame" or
+                className == "CanvasGroup" then
+                    
+                    -- Record the original Visible state if it's visible
+                    if guiObject:IsA("GuiObject") and guiObject.Visible then
+                        originalGuiStates[guiObject] = true
+                    end
                 end
             end
-            
-            -- Set up a connection to mute new sounds as they're created
-            game.DescendantAdded:Connect(function(descendant)
-                if descendant:IsA("Sound") then
-                    task.wait() -- Small delay to ensure sound is initialized
-                    pcall(function()
-                        descendant.Volume = 0
-                    end)
-                end
-            end)
         end
-
-        -- Add these tables at the beginning of your script (outside functions)
-        local originalGuiStates = {}
-        local originalScreenGuiStates = {}
-
-        -- Function to create security overlay with cycle counter and stop button
-        local function createSecurityOverlay(currentCycle, totalCycles)
-            Rayfield:SetVisibility(false)
-            
-            -- Mute all sounds when security overlay starts
-            muteAllSounds()
-
-            -- Clear previous states before recording new ones
-            originalGuiStates = {}
-            originalScreenGuiStates = {}
-
-            if securityFrame then
-                -- Update existing counter if it exists
-                if cycleText then
-                    cycleText.Text = "Cycle: " .. currentCycle .. "/" .. totalCycles
-                end
-                return
-            end
-
-            -- Get references to GUI folders we want to skip
-            local tradingGui = player.PlayerGui:FindFirstChild("Trading")
-            local inventoryGui = player.PlayerGui:FindFirstChild("Inventory")
-            local inventoryContainer = inventoryGui and inventoryGui:FindFirstChild("Inventory")
-            
-            -- Record all GUI element states before hiding them
-            for _, guiObject in pairs(player.PlayerGui:GetDescendants()) do
-                -- Check if the GUI object is inside the Inventory folder
-                local isInventoryGUI = inventoryContainer and guiObject:IsDescendantOf(inventoryContainer)
-                local isTradingGUI = tradingGui and guiObject:IsDescendantOf(tradingGui)
-                local isSecurityGUI = securityGui and guiObject:IsDescendantOf(securityGui)
+        
+        -- Record states of ScreenGuis
+        for _, screenGui in pairs(player.PlayerGui:GetChildren()) do
+            if screenGui:IsA("ScreenGui") then
+                local isTradingGUI = screenGui.Name == "Trading"
+                local isInventoryGUI = screenGui.Name == "Inventory"
                 
-                if not isTradingGUI and not isSecurityGUI and not isInventoryGUI then
-                    local className = guiObject.ClassName
-                    if className == "Frame" or 
-                    className == "ImageButton" or 
-                    className == "TextButton" or 
-                    className == "ImageLabel" or 
-                    className == "TextLabel" or 
-                    className == "ScrollingFrame" or
-                    className == "TextBox" or
-                    className == "ViewportFrame" or
-                    className == "CanvasGroup" then
+                if not isTradingGUI and not isInventoryGUI then
+                    -- Record the original Enabled state if it's enabled
+                    if screenGui.Enabled then
+                        originalScreenGuiStates[screenGui] = true
+                    end
+                end
+            end
+        end
+
+        print("Recorded " .. #originalGuiStates .. " GUI elements and " .. #originalScreenGuiStates .. " ScreenGuis")
+
+        securityGui = Instance.new("ScreenGui")
+        securityGui.Name = "SecurityOverlay"
+        securityGui.IgnoreGuiInset = true
+        securityGui.ResetOnSpawn = false
+        securityGui.ZIndexBehavior = Enum.ZIndexBehavior.Global
+        
+        securityFrame = Instance.new("Frame")
+        securityFrame.Name = "SecurityFrame"
+        securityFrame.Size = UDim2.new(1, 0, 1, 0)
+        securityFrame.Position = UDim2.new(0, 0, 0, 0)
+        securityFrame.BackgroundColor3 = Color3.new(0, 0, 0)
+        securityFrame.BackgroundTransparency = 0
+        securityFrame.BorderSizePixel = 0
+        securityFrame.ZIndex = 999999997
+        
+        -- Cycle counter text in the middle
+        cycleText = Instance.new("TextLabel")
+        cycleText.Name = "CycleCounter"
+        cycleText.Size = UDim2.new(0, 300, 0, 50)
+        cycleText.Position = UDim2.new(0.5, -150, 0.5, -60)
+        cycleText.BackgroundTransparency = 1
+        cycleText.Text = "Cycle: " .. currentCycle .. "/" .. totalCycles
+        cycleText.TextColor3 = Color3.new(1, 1, 1)
+        cycleText.TextSize = 28
+        cycleText.Font = Enum.Font.GothamBold
+        cycleText.TextStrokeTransparency = 0.5
+        cycleText.TextStrokeColor3 = Color3.new(0, 0, 0)
+        cycleText.ZIndex = 999999998
+        cycleText.Parent = securityFrame
+        
+        -- Stop button below counter
+        stopButton = Instance.new("TextButton")
+        stopButton.Name = "StopButton"
+        stopButton.Size = UDim2.new(0, 250, 0, 45)
+        stopButton.Position = UDim2.new(0.5, -125, 0.5, 10)
+        stopButton.BackgroundColor3 = Color3.fromRGB(220, 50, 50)
+        stopButton.BorderSizePixel = 0
+        stopButton.Text = "Stop After Current Cycle"
+        stopButton.TextColor3 = Color3.new(1, 1, 1)
+        stopButton.TextSize = 18
+        stopButton.Font = Enum.Font.GothamBold
+        stopButton.ZIndex = 999999998
+        
+        -- Rounded corners
+        local corner = Instance.new("UICorner")
+        corner.CornerRadius = UDim.new(0, 8)
+        corner.Parent = stopButton
+        
+        -- Stop button click handler
+        stopButton.MouseButton1Click:Connect(function()
+            if spawnRunning then
+                shouldStopAfterCycle = true
+                stopButton.Text = "Stopping..."
+                stopButton.BackgroundColor3 = Color3.fromRGB(150, 150, 150)
+                print("Stop requested - will finish current cycle")
+            end
+        end)
+        
+        stopButton.Parent = securityFrame
+        
+        securityFrame.Parent = securityGui
+        securityGui.Parent = player.PlayerGui
+
+        -- Start a loop to constantly hide other GUI elements EXCEPT Trading GUI and Inventory GUI
+        local hideLoopRunning = true
+        spawn(function()
+            while hideLoopRunning and securityGui and securityGui.Parent do
+                -- Get the GUI folders we want to skip - ALWAYS check fresh every loop
+                local tradingGui = player.PlayerGui:FindFirstChild("Trading")
+                local inventoryGui = player.PlayerGui:FindFirstChild("Inventory")
+
+                inventoryGui.Enabled = false
+                
+                -- Hide everything in PlayerGui except our security overlay, Trading GUI, and Inventory GUI
+                for _, guiObject in pairs(player.PlayerGui:GetDescendants()) do
+                    -- Skip our security overlay
+                    if not guiObject:IsDescendantOf(securityGui) then
+                        -- Check if this GUI object is inside Trading GUI (if it exists)
+                        local isTradingGUI = false
+                        if tradingGui then
+                            isTradingGUI = guiObject:IsDescendantOf(tradingGui)
+                        end
                         
-                        -- Record the original Visible state if it's visible
-                        if guiObject:IsA("GuiObject") and guiObject.Visible then
-                            originalGuiStates[guiObject] = true
+                        -- Check if this GUI object is inside Inventory GUI (if it exists)
+                        local isInventoryGUI = false
+                        if inventoryGui then
+                            isInventoryGUI = guiObject:IsDescendantOf(inventoryGui)
                         end
-                    end
-                end
-            end
-            
-            -- Record states of ScreenGuis
-            for _, screenGui in pairs(player.PlayerGui:GetChildren()) do
-                if screenGui:IsA("ScreenGui") then
-                    local isTradingGUI = screenGui.Name == "Trading"
-                    local isInventoryGUI = screenGui.Name == "Inventory"
-                    
-                    if not isTradingGUI and not isInventoryGUI then
-                        -- Record the original Enabled state if it's enabled
-                        if screenGui.Enabled then
-                            originalScreenGuiStates[screenGui] = true
-                        end
-                    end
-                end
-            end
-
-            print("Recorded " .. #originalGuiStates .. " GUI elements and " .. #originalScreenGuiStates .. " ScreenGuis")
-
-            securityGui = Instance.new("ScreenGui")
-            securityGui.Name = "SecurityOverlay"
-            securityGui.IgnoreGuiInset = true
-            securityGui.ResetOnSpawn = false
-            securityGui.ZIndexBehavior = Enum.ZIndexBehavior.Global
-            
-            securityFrame = Instance.new("Frame")
-            securityFrame.Name = "SecurityFrame"
-            securityFrame.Size = UDim2.new(1, 0, 1, 0)
-            securityFrame.Position = UDim2.new(0, 0, 0, 0)
-            securityFrame.BackgroundColor3 = Color3.new(0, 0, 0)
-            securityFrame.BackgroundTransparency = 0
-            securityFrame.BorderSizePixel = 0
-            securityFrame.ZIndex = 999999997
-            
-            -- Cycle counter text in the middle
-            cycleText = Instance.new("TextLabel")
-            cycleText.Name = "CycleCounter"
-            cycleText.Size = UDim2.new(0, 300, 0, 50)
-            cycleText.Position = UDim2.new(0.5, -150, 0.5, -60)
-            cycleText.BackgroundTransparency = 1
-            cycleText.Text = "Cycle: " .. currentCycle .. "/" .. totalCycles
-            cycleText.TextColor3 = Color3.new(1, 1, 1)
-            cycleText.TextSize = 28
-            cycleText.Font = Enum.Font.GothamBold
-            cycleText.TextStrokeTransparency = 0.5
-            cycleText.TextStrokeColor3 = Color3.new(0, 0, 0)
-            cycleText.ZIndex = 999999998
-            cycleText.Parent = securityFrame
-            
-            -- Stop button below counter
-            stopButton = Instance.new("TextButton")
-            stopButton.Name = "StopButton"
-            stopButton.Size = UDim2.new(0, 250, 0, 45)
-            stopButton.Position = UDim2.new(0.5, -125, 0.5, 10)
-            stopButton.BackgroundColor3 = Color3.fromRGB(220, 50, 50)
-            stopButton.BorderSizePixel = 0
-            stopButton.Text = "Stop After Current Cycle"
-            stopButton.TextColor3 = Color3.new(1, 1, 1)
-            stopButton.TextSize = 18
-            stopButton.Font = Enum.Font.GothamBold
-            stopButton.ZIndex = 999999998
-            
-            -- Rounded corners
-            local corner = Instance.new("UICorner")
-            corner.CornerRadius = UDim.new(0, 8)
-            corner.Parent = stopButton
-            
-            -- Stop button click handler
-            stopButton.MouseButton1Click:Connect(function()
-                if spawnRunning then
-                    shouldStopAfterCycle = true
-                    stopButton.Text = "Stopping..."
-                    stopButton.BackgroundColor3 = Color3.fromRGB(150, 150, 150)
-                    print("Stop requested - will finish current cycle")
-                end
-            end)
-            
-            stopButton.Parent = securityFrame
-            
-            securityFrame.Parent = securityGui
-            securityGui.Parent = player.PlayerGui
-
-            -- Start a loop to constantly hide other GUI elements EXCEPT Trading GUI and Inventory GUI
-            local hideLoopRunning = true
-            spawn(function()
-                while hideLoopRunning and securityGui and securityGui.Parent do
-                    -- Get the GUI folders we want to skip - ALWAYS check fresh every loop
-                    local tradingGui = player.PlayerGui:FindFirstChild("Trading")
-                    local inventoryGui = player.PlayerGui:FindFirstChild("Inventory")
-
-                    inventoryGui.Enabled = false
-                    
-                    -- Hide everything in PlayerGui except our security overlay, Trading GUI, and Inventory GUI
-                    for _, guiObject in pairs(player.PlayerGui:GetDescendants()) do
-                        -- Skip our security overlay
-                        if not guiObject:IsDescendantOf(securityGui) then
-                            -- Check if this GUI object is inside Trading GUI (if it exists)
-                            local isTradingGUI = false
-                            if tradingGui then
-                                isTradingGUI = guiObject:IsDescendantOf(tradingGui)
-                            end
-                            
-                            -- Check if this GUI object is inside Inventory GUI (if it exists)
-                            local isInventoryGUI = false
-                            if inventoryGui then
-                                isInventoryGUI = guiObject:IsDescendantOf(inventoryGui)
-                            end
-                            
-                            if not isTradingGUI and not isInventoryGUI then
-                                -- Only hide specific GUI elements to avoid errors
-                                local className = guiObject.ClassName
-                                if className == "Frame" or 
-                                className == "ImageButton" or 
-                                className == "TextButton" or 
-                                className == "ImageLabel" or 
-                                className == "TextLabel" or 
-                                className == "ScrollingFrame" or
-                                className == "TextBox" or
-                                className == "ViewportFrame" or
-                                className == "CanvasGroup" then
-                                    
-                                    pcall(function()
-                                        if guiObject.Visible == true then
-                                            guiObject.Visible = false
-                                        end
-                                    end)
-                                end
-                            end
-                        end
-                    end
-                    
-                    -- Also disable other ScreenGuis except Trading GUI and Inventory GUI
-                    for _, screenGui in pairs(player.PlayerGui:GetChildren()) do
-                        if screenGui:IsA("ScreenGui") and screenGui ~= securityGui then
-                            local isTradingGUI = screenGui.Name == "Trading"
-                            local isInventoryGUI = screenGui.Name == "Inventory"
-                            
-                            if not isTradingGUI and not isInventoryGUI then
+                        
+                        if not isTradingGUI and not isInventoryGUI then
+                            -- Only hide specific GUI elements to avoid errors
+                            local className = guiObject.ClassName
+                            if className == "Frame" or 
+                            className == "ImageButton" or 
+                            className == "TextButton" or 
+                            className == "ImageLabel" or 
+                            className == "TextLabel" or 
+                            className == "ScrollingFrame" or
+                            className == "TextBox" or
+                            className == "ViewportFrame" or
+                            className == "CanvasGroup" then
+                                
                                 pcall(function()
-                                    if screenGui.Enabled then
-                                        screenGui.Enabled = false
+                                    if guiObject.Visible == true then
+                                        guiObject.Visible = false
                                     end
                                 end)
                             end
                         end
                     end
-                    
-                    wait(0.2)
-                end
-            end)
-            
-            -- Store the stop function for the hide loop
-            stopHideLoop = function()
-                hideLoopRunning = false
-            end
-
-            -- Monitor ScreenGui for tampering (only when actively running)
-            securityGui.AncestryChanged:Connect(function()
-                if not securityGui:IsDescendantOf(game) and spawnRunning and not shouldStopAfterCycle then
-                    alertAndKick("Attempted to remove security ScreenGui")
-                end
-            end)
-            
-            securityGui:GetPropertyChangedSignal("Enabled"):Connect(function()
-                if not securityGui.Enabled and spawnRunning and not shouldStopAfterCycle then
-                    alertAndKick("Attempted to disable security ScreenGui")
-                end
-            end)
-            
-            -- Monitor Frame for tampering (only when actively running)
-            local originalFrameProperties = {
-                Visible = true,
-                BackgroundTransparency = 0,
-                BackgroundColor3 = Color3.new(0, 0, 0),
-                Size = UDim2.new(1, 0, 1, 0),
-                Position = UDim2.new(0, 0, 0, 0)
-            }
-            
-            securityFrame:GetPropertyChangedSignal("Visible"):Connect(function()
-                if securityFrame.Visible ~= originalFrameProperties.Visible and spawnRunning and not shouldStopAfterCycle then
-                    alertAndKick("Attempted to hide security frame")
-                end
-            end)
-            
-            securityFrame:GetPropertyChangedSignal("BackgroundTransparency"):Connect(function()
-                if securityFrame.BackgroundTransparency ~= originalFrameProperties.BackgroundTransparency and spawnRunning and not shouldStopAfterCycle then
-                    alertAndKick("Attempted to modify security frame transparency")
-                end
-            end)
-            
-            securityFrame:GetPropertyChangedSignal("BackgroundColor3"):Connect(function()
-                if securityFrame.BackgroundColor3 ~= originalFrameProperties.BackgroundColor3 and spawnRunning and not shouldStopAfterCycle then
-                    alertAndKick("Attempted to modify security frame color")
-                end
-            end)
-            
-            securityFrame:GetPropertyChangedSignal("Size"):Connect(function()
-                if securityFrame.Size ~= originalFrameProperties.Size and spawnRunning and not shouldStopAfterCycle then
-                    alertAndKick("Attempted to resize security frame")
-                end
-            end)
-            
-            securityFrame:GetPropertyChangedSignal("Position"):Connect(function()
-                if securityFrame.Position ~= originalFrameProperties.Position and spawnRunning and not shouldStopAfterCycle then
-                    alertAndKick("Attempted to reposition security frame")
-                end
-            end)
-            
-            securityFrame.AncestryChanged:Connect(function()
-                if not securityFrame:IsDescendantOf(game) and spawnRunning and not shouldStopAfterCycle then
-                    alertAndKick("Attempted to remove security frame")
-                end
-            end)
-
-            print("Security overlay created - Cycle: " .. currentCycle .. "/" .. totalCycles)
-        end
-
-        -- Function to update cycle counter
-        local function updateCycleCounter(current, total)
-            if cycleText and securityFrame and securityFrame.Parent then
-                cycleText.Text = "Cycle: " .. current .. "/" .. total
-            end
-        end
-
-        -- Function to restore GUI states
-        local function restoreGuiStates()
-            local restoredCount = 0
-            
-            -- Restore individual GUI elements
-            for guiObject, _ in pairs(originalGuiStates) do
-                pcall(function()
-                    -- Only restore if the GUI object still exists
-                    if guiObject and guiObject:IsDescendantOf(game) then
-                        guiObject.Visible = true
-                        restoredCount = restoredCount + 1
-                    end
-                end)
-            end
-            
-            -- Restore ScreenGuis
-            for screenGui, _ in pairs(originalScreenGuiStates) do
-                pcall(function()
-                    -- Only restore if the ScreenGui still exists
-                    if screenGui and screenGui:IsDescendantOf(game) then
-                        screenGui.Enabled = true
-                        restoredCount = restoredCount + 1
-                    end
-                end)
-            end
-            
-            print("Restored " .. restoredCount .. " GUI elements to their original states")
-            
-            -- Clear the state tables
-            originalGuiStates = {}
-            originalScreenGuiStates = {}
-        end
-
-        -- Function to remove security overlay safely
-        local function removeSecurityOverlay()
-            if securityGui then
-                spawnRunning = false -- Mark as not running before destroying
-                
-                -- Stop the hide loop if it exists
-                if stopHideLoop then
-                    stopHideLoop()
                 end
                 
-                task.wait(0.1) -- Small delay to ensure all connections see the updated state
-                
-                -- Restore all GUI states before destroying the security overlay
-                restoreGuiStates()
-                player.PlayerGui:FindFirstChild("Inventory").Enabled = true
-                -- Also restore Rayfield visibility
-                Rayfield:SetVisibility(true)
-                
-                securityGui:Destroy()
-                securityGui = nil
-                securityFrame = nil
-                cycleText = nil
-                stopButton = nil
-                print("Security overlay removed and GUI states restored")
-            end
-        end
-
-        -- Function to kick player when done
-        local function completeSpawnAndKick(completedCycles, totalCycles)
-            -- Remove security overlay first
-            removeSecurityOverlay()
-            
-            -- Kick player with completion message
-            player:Kick("✅ Item Spawning Complete!\nCycles: " .. completedCycles .. "/" .. totalCycles .. "\nRejoin to continue.")
-        end
-
-        -- Input for item to spawn
-        SpawnTab:CreateInput({
-            Name = "Item to Spawn",
-            PlaceholderText = "e.g. Ptera's Heart",
-            RemoveTextAfterFocusLost = false,
-            Callback = function(text)
-                spawningSettings.TargetItem = text
-            end,
-        })
-
-        -- Input for user ID to trade to
-        SpawnTab:CreateInput({
-            Name = "Alt Account User ID",
-            PlaceholderText = "e.g. 676942021",
-            RemoveTextAfterFocusLost = false,
-            Callback = function(text)
-                spawningSettings.TargetUserID = tonumber(text) or 0
-            end,
-        })
-
-        -- Slider for spawn amount
-        SpawnTab:CreateSlider({
-            Name = "Items to Spawn (Auto-Loop)",
-            Range = {1, 100},
-            Increment = 1,
-            CurrentValue = 1,
-            Callback = function(value)
-                spawningSettings.SpawnAmount = value
-            end,
-        })
-
-        -- Function to get all instances of the target item from backpack
-        local function getItemInstances(itemName)
-            local instances = {}
-            local tools = player.Backpack.Tools
-            
-            for _, item in pairs(tools:GetChildren()) do
-                if item.Name == itemName and item:FindFirstChild("Unique_Id") then
-                    table.insert(instances, item)
-                end
-            end
-            
-            return instances
-        end
-
-        -- Function to wait until item is equipped in a specific slot (with repeated attempts)
-        local function waitForEquip(slotName, itemName, equipRemote, timeout)
-            local startTime = tick()
-            local slotPath = player.PlayerGui.StatMenu.Main.Container.Equipment[slotName]
-            local lastEquipAttempt = 0
-            
-            while tick() - startTime < (timeout or 5) do
-                if slotPath and slotPath:FindFirstChild("Body") and slotPath.Body:FindFirstChild("TextLabel") then
-                    local equippedText = slotPath.Body.TextLabel.Text
-                    if equippedText == itemName then
-                        return true
-                    end
-                end
-                
-                if tick() - lastEquipAttempt >= 0.5 then
-                    equipRemote()
-                    lastEquipAttempt = tick()
-                end
-                
-                task.wait(0.1)
-            end
-            
-            return false
-        end
-
-        -- Function to wait until item is unequipped from a specific slot (with repeated attempts)
-        local function waitForUnequip(slotName, unequipRemote, timeout)
-            local startTime = tick()
-            local slotPath = player.PlayerGui.StatMenu.Main.Container.Equipment[slotName]
-            local lastUnequipAttempt = 0
-            
-            while tick() - startTime < (timeout or 5) do
-                if slotPath and slotPath:FindFirstChild("Body") and slotPath.Body:FindFirstChild("TextLabel") then
-                    local equippedText = slotPath.Body.TextLabel.Text
-                    if equippedText == "None" or equippedText == "" then
-                        return true
-                    end
-                end
-                
-                if tick() - lastUnequipAttempt >= 0.5 then
-                    unequipRemote()
-                    lastUnequipAttempt = tick()
-                end
-                
-                task.wait(0.1)
-            end
-            
-            return false
-        end
-
-        -- Single spawn cycle function
-        local function runSingleSpawnCycle()
-            -- Step -3: Unequip Artifact
-            if not waitForUnequip("Artifact", function()
-                game:GetService("Players").LocalPlayer.PlayerGui.StatMenu.RemoteEvent:FireServer("Artifact")
-            end, 5) then
-                return false
-            end
-            task.wait(1.5)
-            
-            -- Step -2: Unequip Offhand
-            if not waitForUnequip("Offhand", function()
-                game:GetService("Players").LocalPlayer.PlayerGui.StatMenu.RemoteEvent:FireServer("Offhand")
-            end, 5) then
-                return false
-            end
-            task.wait(1.5)
-            
-            -- Step 0: Unequip Gear1
-            if not waitForUnequip("Gear1", function()
-                game:GetService("Players").LocalPlayer.PlayerGui.StatMenu.GearRemote:FireServer("Gear1")
-            end, 5) then
-                return false
-            end
-            task.wait(0.5)
-
-            -- Step 1: Equip to Gear1
-            if not waitForEquip("Gear1", spawningSettings.TargetItem, function()
-                game:GetService("ReplicatedStorage").Remotes.Information.InventoryManage:FireServer(
-                    "Use", spawningSettings.TargetItem, player.Backpack.Tools["Parasitic Leech"]
-                )
-            end, 5) then
-                return false
-            end
-            task.wait(1.5)
-            
-            -- Step 2: Equip to Offhand
-            if not waitForEquip("Offhand", spawningSettings.TargetItem, function()
-                game:GetService("ReplicatedStorage").Remotes.Information.InventoryManage:FireServer(
-                    "Use", spawningSettings.TargetItem, player.Backpack.Tools["Slimy Buckler"]
-                )
-            end, 5) then
-                return false
-            end
-            task.wait(1.5)
-            
-            -- Step 3: Equip to Artifact
-            if not waitForEquip("Artifact", spawningSettings.TargetItem, function()
-                game:GetService("ReplicatedStorage").Remotes.Information.InventoryManage:FireServer(
-                    "Use", spawningSettings.TargetItem, player.Backpack.Tools["Chaos Orb"]
-                )
-            end, 5) then
-                return false
-            end
-            task.wait(2)
-            
-            -- Step 4: Unequip Artifact
-            if not waitForUnequip("Artifact", function()
-                game:GetService("Players").LocalPlayer.PlayerGui.StatMenu.RemoteEvent:FireServer("Artifact")
-            end, 5) then
-                return false
-            end
-            task.wait(1.5)
-            
-            -- Step 5: Unequip Offhand
-            if not waitForUnequip("Offhand", function()
-                game:GetService("Players").LocalPlayer.PlayerGui.StatMenu.RemoteEvent:FireServer("Offhand")
-            end, 5) then
-                return false
-            end
-            task.wait(1.5)
-            
-            -- Step 6: Unequip Gear1
-            if not waitForUnequip("Gear1", function()
-                game:GetService("Players").LocalPlayer.PlayerGui.StatMenu.GearRemote:FireServer("Gear1")
-            end, 5) then
-                return false
-            end
-            task.wait(0.5)
-            
-            -- Step 7: Send trade request
-            if spawningSettings.TargetUserID > 0 then
-                game:GetService("ReplicatedStorage").Remotes.Information.TradeRequest:FireServer(
-                    "SendTradeRequest",
-                    {TargetUserId = spawningSettings.TargetUserID}
-                )
-                task.wait(0.5)
-                
-                -- Step 8: Wait for trade window
-                local startTime = tick()
-                local tradeOpened = false
-                
-                while tick() - startTime < 30 do
-                    if player.PlayerGui:FindFirstChild("Trading") and 
-                    player.PlayerGui.Trading:FindFirstChild("Main") and
-                    player.PlayerGui.Trading.Main.Visible then
-                        tradeOpened = true
-                        break
-                    end
-                    task.wait(0.5)
-                end
-                
-                if not tradeOpened then
-                    return false
-                end
-                
-                -- Step 9: Add items to trade
-                local itemInstances = getItemInstances(spawningSettings.TargetItem)
-                
-                for i = 1, math.min(3, #itemInstances) do
-                    local item = itemInstances[i]
-                    if item and item:FindFirstChild("Unique_Id") then
-                        game:GetService("ReplicatedStorage").Remotes.Information.TradeRequest:FireServer(
-                            "AddItemToTrade",
-                            {
-                                ItemName = item.Name,
-                                Unique_Id = item.Unique_Id.Value
-                            }
-                        )
-                        task.wait(0.05)
-                    end
-                end
-                
-                -- Step 10: Confirm trade
-                task.wait(0.5)
-                game:GetService("ReplicatedStorage").Remotes.Information.TradeRequest:FireServer("ConfirmTrade")
-                
-                -- Wait for trade to complete
-                task.wait(5)
-                
-                -- Wait for trade window to close
-                startTime = tick()
-                while tick() - startTime < 10 do
-                    if not (player.PlayerGui:FindFirstChild("Trading") and 
-                            player.PlayerGui.Trading:FindFirstChild("Main") and
-                            player.PlayerGui.Trading.Main.Visible) then
-                        break
-                    end
-                    task.wait(0.5)
-                end
-            end
-            
-            return true
-        end
-
-        local function giveOneItem()
-            createSecurityOverlay(0,1)
-            -- Step 0: Unequip Gear1
-            if not waitForUnequip("Gear1", function()
-                game:GetService("Players").LocalPlayer.PlayerGui.StatMenu.GearRemote:FireServer("Gear1")
-            end, 5) then
-                return false
-            end
-            task.wait(0.5)
-
-            -- Step 1: Equip to Gear1
-            if not waitForEquip("Gear1", spawningSettings.TargetItem, function()
-                game:GetService("ReplicatedStorage").Remotes.Information.InventoryManage:FireServer(
-                    "Use", spawningSettings.TargetItem, player.Backpack.Tools["Parasitic Leech"]
-                )
-            end, 5) then
-                return false
-            end
-            task.wait(0.5)
-
-            -- Step 0: Unequip Gear1
-            if not waitForUnequip("Gear1", function()
-                game:GetService("Players").LocalPlayer.PlayerGui.StatMenu.GearRemote:FireServer("Gear1")
-            end, 5) then
-                return false
-            end
-            task.wait(1.5)
-
-            removeSecurityOverlay()
-        end
-
-        -- Main auto-loop spawn function
-        local function runAutoSpawnCycle()
-            if spawnRunning then return end
-            spawnRunning = true
-            shouldStopAfterCycle = false
-            
-            -- Create security overlay with initial counter
-            createSecurityOverlay(0, spawningSettings.SpawnAmount)
-            
-            print("=== Starting auto-spawn for " .. spawningSettings.SpawnAmount .. " cycles ===")
-            
-            local completedCycles = 0
-            
-            for i = 1, spawningSettings.SpawnAmount do
-                if not spawnRunning or shouldStopAfterCycle then
-                    print("Stopping at cycle " .. i .. " due to stop request")
-                    break
-                end
-                
-                -- Update the cycle counter
-                updateCycleCounter(i, spawningSettings.SpawnAmount)
-                
-                print("Cycle " .. i .. "/" .. spawningSettings.SpawnAmount)
-                
-                local success = runSingleSpawnCycle()
-                
-                if success then
-                    completedCycles = completedCycles + 1
-                    print("Cycle " .. i .. " completed successfully")
-                else
-                    print("Cycle " .. i .. " failed, retrying...")
-                    task.wait(2)
-                    -- Retry the failed cycle
-                    success = runSingleSpawnCycle()
-                    if success then
-                        completedCycles = completedCycles + 1
-                    end
-                end
-                
-                task.wait(1)
-            end
-            
-            spawnRunning = false
-            print("=== Auto-spawn completed: " .. completedCycles .. "/" .. spawningSettings.SpawnAmount .. " ===")
-            
-            -- Kick player when done
-            completeSpawnAndKick(completedCycles, spawningSettings.SpawnAmount)
-        end
-
-        -- Start auto-spawn button
-        SpawnTab:CreateButton({
-            Name = "Start Auto-Spawn Loop",
-            Callback = function()
-                if spawningSettings.TargetItem == "" then
-                    Rayfield:Notify({
-                        Title = "Error",
-                        Content = "Enter item name first!",
-                        Duration = 5,
-                    })
-                    return
-                end
-                
-                if not isItemAllowed(spawningSettings.TargetItem) then
-                    Rayfield:Notify({
-                        Title = "Error",
-                        Content = "This item is not possible!",
-                        Duration = 5,
-                    })
-                    return
-                end
-                
-                if spawningSettings.TargetUserID == 0 then
-                    Rayfield:Notify({
-                        Title = "Error",
-                        Content = "Enter target User ID!",
-                        Duration = 5,
-                    })
-                    return
-                end
-                
-                if not player.Backpack.Tools:FindFirstChild("Parasitic Leech") or
-                not player.Backpack.Tools:FindFirstChild("Slimy Buckler") or
-                not player.Backpack.Tools:FindFirstChild("Chaos Orb") then
-                    Rayfield:Notify({
-                        Title = "Error",
-                        Content = "Need Parasitic Leech, Slimy Buckler, and Chaos Orb!",
-                        Duration = 5,
-                    })
-                    return
-                end
-                
-                task.spawn(runAutoSpawnCycle)
-            end,
-        })
-
-        -- Give one item button
-        SpawnTab:CreateButton({
-            Name = "Spawn Max One Item",
-            Callback = function()
-                if spawningSettings.TargetItem == "" then
-                    Rayfield:Notify({
-                        Title = "Error",
-                        Content = "Enter item name first!",
-                        Duration = 5,
-                    })
-                    return
-                end
-                
-                if not isItemAllowed(spawningSettings.TargetItem) then
-                    Rayfield:Notify({
-                        Title = "Error",
-                        Content = "This item is not possible!",
-                        Duration = 5,
-                    })
-                    return
-                end
-                
-                -- Check if player already has the item in their tools folder
-                local toolsFolder = player.Backpack.Tools
-                local itemAlreadyExists = false
-                
-                -- Search through all tools in the tools folder
-                for _, tool in pairs(toolsFolder:GetChildren()) do
-                    if tool.Name == spawningSettings.TargetItem then
-                        itemAlreadyExists = true
-                        break
-                    end
-                end
-                
-                if itemAlreadyExists then
-                    Rayfield:Notify({
-                        Title = "Error",
-                        Content = "You already have a " .. spawningSettings.TargetItem .. "!",
-                        Duration = 5,
-                    })
-                    return
-                end
-                
-                if not player.Backpack.Tools:FindFirstChild("Parasitic Leech") then
-                    Rayfield:Notify({
-                        Title = "Error",
-                        Content = "Need Parasitic Leech",
-                        Duration = 5,
-                    })
-                    return
-                end
-                
-                task.spawn(giveOneItem)
-            end,
-        })
-
-        -- Auto accept and confirm trades for alt account - Multi-method approach
-        local acceptTradeRunning = false
-        local acceptTradeConnection = nil
-
-        -- Function to check if currently in a trade
-        local function isInTrade()
-            local tradeGui = player.PlayerGui:FindFirstChild("Trading")
-            if tradeGui and tradeGui:FindFirstChild("Main") then
-                return tradeGui.Main.Visible == true
-            end
-            return false
-        end
-
-        -- Method 1: Direct GUI button click
-        local function clickAcceptButton()
-            local success, err = pcall(function()
-                local acceptButton = player.PlayerGui.Trading.Requests.Request.Frame.Answers.Accept
-                if acceptButton and acceptButton.Visible then
-                    -- Try multiple click methods
-                    
-                    -- Method 1a: MouseButton1Click
-                    pcall(function()
-                        for _, connection in pairs(getconnections(acceptButton.MouseButton1Click)) do
-                            connection:Fire()
+                -- Also disable other ScreenGuis except Trading GUI and Inventory GUI
+                for _, screenGui in pairs(player.PlayerGui:GetChildren()) do
+                    if screenGui:IsA("ScreenGui") and screenGui ~= securityGui then
+                        local isTradingGUI = screenGui.Name == "Trading"
+                        local isInventoryGUI = screenGui.Name == "Inventory"
+                        
+                        if not isTradingGUI and not isInventoryGUI then
+                            pcall(function()
+                                if screenGui.Enabled then
+                                    screenGui.Enabled = false
+                                end
+                            end)
                         end
-                    end)
-                    
-                    -- Method 1b: MouseButton1Down
-                    pcall(function()
-                        for _, connection in pairs(getconnections(acceptButton.MouseButton1Down)) do
-                            connection:Fire()
-                        end
-                    end)
-                    
-                    -- Method 1c: Activated
-                    pcall(function()
-                        for _, connection in pairs(getconnections(acceptButton.Activated)) do
-                            connection:Fire()
-                        end
-                    end)
-                    
-                    print("Clicked accept button using connection firing")
+                    end
+                end
+                
+                wait(0.2)
+            end
+        end)
+        
+        -- Store the stop function for the hide loop
+        stopHideLoop = function()
+            hideLoopRunning = false
+        end
+
+        -- Monitor ScreenGui for tampering (only when actively running)
+        securityGui.AncestryChanged:Connect(function()
+            if not securityGui:IsDescendantOf(game) and spawnRunning and not shouldStopAfterCycle then
+                alertAndKick("Attempted to remove security ScreenGui")
+            end
+        end)
+        
+        securityGui:GetPropertyChangedSignal("Enabled"):Connect(function()
+            if not securityGui.Enabled and spawnRunning and not shouldStopAfterCycle then
+                alertAndKick("Attempted to disable security ScreenGui")
+            end
+        end)
+        
+        -- Monitor Frame for tampering (only when actively running)
+        local originalFrameProperties = {
+            Visible = true,
+            BackgroundTransparency = 0,
+            BackgroundColor3 = Color3.new(0, 0, 0),
+            Size = UDim2.new(1, 0, 1, 0),
+            Position = UDim2.new(0, 0, 0, 0)
+        }
+        
+        securityFrame:GetPropertyChangedSignal("Visible"):Connect(function()
+            if securityFrame.Visible ~= originalFrameProperties.Visible and spawnRunning and not shouldStopAfterCycle then
+                alertAndKick("Attempted to hide security frame")
+            end
+        end)
+        
+        securityFrame:GetPropertyChangedSignal("BackgroundTransparency"):Connect(function()
+            if securityFrame.BackgroundTransparency ~= originalFrameProperties.BackgroundTransparency and spawnRunning and not shouldStopAfterCycle then
+                alertAndKick("Attempted to modify security frame transparency")
+            end
+        end)
+        
+        securityFrame:GetPropertyChangedSignal("BackgroundColor3"):Connect(function()
+            if securityFrame.BackgroundColor3 ~= originalFrameProperties.BackgroundColor3 and spawnRunning and not shouldStopAfterCycle then
+                alertAndKick("Attempted to modify security frame color")
+            end
+        end)
+        
+        securityFrame:GetPropertyChangedSignal("Size"):Connect(function()
+            if securityFrame.Size ~= originalFrameProperties.Size and spawnRunning and not shouldStopAfterCycle then
+                alertAndKick("Attempted to resize security frame")
+            end
+        end)
+        
+        securityFrame:GetPropertyChangedSignal("Position"):Connect(function()
+            if securityFrame.Position ~= originalFrameProperties.Position and spawnRunning and not shouldStopAfterCycle then
+                alertAndKick("Attempted to reposition security frame")
+            end
+        end)
+        
+        securityFrame.AncestryChanged:Connect(function()
+            if not securityFrame:IsDescendantOf(game) and spawnRunning and not shouldStopAfterCycle then
+                alertAndKick("Attempted to remove security frame")
+            end
+        end)
+
+        print("Security overlay created - Cycle: " .. currentCycle .. "/" .. totalCycles)
+    end
+
+    -- Function to update cycle counter
+    local function updateCycleCounter(current, total)
+        if cycleText and securityFrame and securityFrame.Parent then
+            cycleText.Text = "Cycle: " .. current .. "/" .. total
+        end
+    end
+
+    -- Function to restore GUI states
+    local function restoreGuiStates()
+        local restoredCount = 0
+        
+        -- Restore individual GUI elements
+        for guiObject, _ in pairs(originalGuiStates) do
+            pcall(function()
+                -- Only restore if the GUI object still exists
+                if guiObject and guiObject:IsDescendantOf(game) then
+                    guiObject.Visible = true
+                    restoredCount = restoredCount + 1
+                end
+            end)
+        end
+        
+        -- Restore ScreenGuis
+        for screenGui, _ in pairs(originalScreenGuiStates) do
+            pcall(function()
+                -- Only restore if the ScreenGui still exists
+                if screenGui and screenGui:IsDescendantOf(game) then
+                    screenGui.Enabled = true
+                    restoredCount = restoredCount + 1
+                end
+            end)
+        end
+        
+        print("Restored " .. restoredCount .. " GUI elements to their original states")
+        
+        -- Clear the state tables
+        originalGuiStates = {}
+        originalScreenGuiStates = {}
+    end
+
+    -- Function to remove security overlay safely
+    local function removeSecurityOverlay()
+        if securityGui then
+            spawnRunning = false -- Mark as not running before destroying
+            
+            -- Stop the hide loop if it exists
+            if stopHideLoop then
+                stopHideLoop()
+            end
+            
+            task.wait(0.1) -- Small delay to ensure all connections see the updated state
+            
+            -- Restore all GUI states before destroying the security overlay
+            restoreGuiStates()
+            player.PlayerGui:FindFirstChild("Inventory").Enabled = true
+            -- Also restore Rayfield visibility
+            Rayfield:SetVisibility(true)
+            
+            securityGui:Destroy()
+            securityGui = nil
+            securityFrame = nil
+            cycleText = nil
+            stopButton = nil
+            print("Security overlay removed and GUI states restored")
+        end
+    end
+
+    -- Function to kick player when done
+    local function completeSpawnAndKick(completedCycles, totalCycles)
+        -- Remove security overlay first
+        removeSecurityOverlay()
+        
+        -- Kick player with completion message
+        player:Kick("✅ Item Spawning Complete!\nCycles: " .. completedCycles .. "/" .. totalCycles .. "\nRejoin to continue.")
+    end
+
+    -- Input for item to spawn
+    SpawnTab:CreateInput({
+        Name = "Item to Spawn",
+        PlaceholderText = "e.g. Ptera's Heart",
+        RemoveTextAfterFocusLost = false,
+        Callback = function(text)
+            spawningSettings.TargetItem = text
+        end,
+    })
+
+    -- Input for user ID to trade to
+    SpawnTab:CreateInput({
+        Name = "Alt Account User ID",
+        PlaceholderText = "e.g. 676942021",
+        RemoveTextAfterFocusLost = false,
+        Callback = function(text)
+            spawningSettings.TargetUserID = tonumber(text) or 0
+        end,
+    })
+
+    -- Slider for spawn amount
+    SpawnTab:CreateSlider({
+        Name = "Items to Spawn (Auto-Loop)",
+        Range = {1, 100},
+        Increment = 1,
+        CurrentValue = 1,
+        Callback = function(value)
+            spawningSettings.SpawnAmount = value
+        end,
+    })
+
+    -- Function to get all instances of the target item from backpack
+    local function getItemInstances(itemName)
+        local instances = {}
+        local tools = player.Backpack.Tools
+        
+        for _, item in pairs(tools:GetChildren()) do
+            if item.Name == itemName and item:FindFirstChild("Unique_Id") then
+                table.insert(instances, item)
+            end
+        end
+        
+        return instances
+    end
+
+    -- Function to wait until item is equipped in a specific slot (with repeated attempts)
+    local function waitForEquip(slotName, itemName, equipRemote, timeout)
+        local startTime = tick()
+        local slotPath = player.PlayerGui.StatMenu.Main.Container.Equipment[slotName]
+        local lastEquipAttempt = 0
+        
+        while tick() - startTime < (timeout or 5) do
+            if slotPath and slotPath:FindFirstChild("Body") and slotPath.Body:FindFirstChild("TextLabel") then
+                local equippedText = slotPath.Body.TextLabel.Text
+                if equippedText == itemName then
                     return true
                 end
-            end)
+            end
             
-            return success
+            if tick() - lastEquipAttempt >= 0.5 then
+                equipRemote()
+                lastEquipAttempt = tick()
+            end
+            
+            task.wait(0.1)
         end
+        
+        return false
+    end
 
-        -- Method 2: Find and click any visible Request frame
-        local function findAndClickAccept()
-            local tradeGui = player.PlayerGui:FindFirstChild("Trading")
-            if not tradeGui then return false end
-            
-            local requests = tradeGui:FindFirstChild("Requests")
-            if not requests then return false end
-            
-            -- Look for any Request frame
-            for _, child in pairs(requests:GetChildren()) do
-                if child.Name == "Request" and child:IsA("Frame") and child.Visible then
-                    local success = pcall(function()
-                        local acceptBtn = child.Frame.Answers.Accept
-                        if acceptBtn then
-                            -- Fire all connections
-                            for _, conn in pairs(getconnections(acceptBtn.MouseButton1Down)) do
-                                conn:Fire()
-                            end
-                            for _, conn in pairs(getconnections(acceptBtn.MouseButton1Click)) do
-                                conn:Fire()
-                            end
-                            for _, conn in pairs(getconnections(acceptBtn.Activated)) do
-                                conn:Fire()
-                            end
-                            print("Clicked accept on Request frame:", child:GetFullName())
-                        end
-                    end)
-                    if success then return true end
+    -- Function to wait until item is unequipped from a specific slot (with repeated attempts)
+    local function waitForUnequip(slotName, unequipRemote, timeout)
+        local startTime = tick()
+        local slotPath = player.PlayerGui.StatMenu.Main.Container.Equipment[slotName]
+        local lastUnequipAttempt = 0
+        
+        while tick() - startTime < (timeout or 5) do
+            if slotPath and slotPath:FindFirstChild("Body") and slotPath.Body:FindFirstChild("TextLabel") then
+                local equippedText = slotPath.Body.TextLabel.Text
+                if equippedText == "None" or equippedText == "" then
+                    return true
                 end
             end
             
+            if tick() - lastUnequipAttempt >= 0.5 then
+                unequipRemote()
+                lastUnequipAttempt = tick()
+            end
+            
+            task.wait(0.1)
+        end
+        
+        return false
+    end
+
+    -- Single spawn cycle function
+    local function runSingleSpawnCycle()
+        -- Step -3: Unequip Artifact
+        if not waitForUnequip("Artifact", function()
+            game:GetService("Players").LocalPlayer.PlayerGui.StatMenu.RemoteEvent:FireServer("Artifact")
+        end, 5) then
             return false
         end
+        task.wait(1.5)
+        
+        -- Step -2: Unequip Offhand
+        if not waitForUnequip("Offhand", function()
+            game:GetService("Players").LocalPlayer.PlayerGui.StatMenu.RemoteEvent:FireServer("Offhand")
+        end, 5) then
+            return false
+        end
+        task.wait(1.5)
+        
+        -- Step 0: Unequip Gear1
+        if not waitForUnequip("Gear1", function()
+            game:GetService("Players").LocalPlayer.PlayerGui.StatMenu.GearRemote:FireServer("Gear1")
+        end, 5) then
+            return false
+        end
+        task.wait(0.5)
 
-        -- Method 3: Fire the remote directly if we can find the RequestId
-        local function fireAcceptRemote()
-            local tradeRequest = player:GetAttribute("TradeRequest")
-            if tradeRequest and tradeRequest.RequestId then
-                local success = pcall(function()
+        -- Step 1: Equip to Gear1
+        if not waitForEquip("Gear1", spawningSettings.TargetItem, function()
+            game:GetService("ReplicatedStorage").Remotes.Information.InventoryManage:FireServer(
+                "Use", spawningSettings.TargetItem, player.Backpack.Tools["Parasitic Leech"]
+            )
+        end, 5) then
+            return false
+        end
+        task.wait(1.5)
+        
+        -- Step 2: Equip to Offhand
+        if not waitForEquip("Offhand", spawningSettings.TargetItem, function()
+            game:GetService("ReplicatedStorage").Remotes.Information.InventoryManage:FireServer(
+                "Use", spawningSettings.TargetItem, player.Backpack.Tools["Slimy Buckler"]
+            )
+        end, 5) then
+            return false
+        end
+        task.wait(1.5)
+        
+        -- Step 3: Equip to Artifact
+        if not waitForEquip("Artifact", spawningSettings.TargetItem, function()
+            game:GetService("ReplicatedStorage").Remotes.Information.InventoryManage:FireServer(
+                "Use", spawningSettings.TargetItem, player.Backpack.Tools["Chaos Orb"]
+            )
+        end, 5) then
+            return false
+        end
+        task.wait(2)
+        
+        -- Step 4: Unequip Artifact
+        if not waitForUnequip("Artifact", function()
+            game:GetService("Players").LocalPlayer.PlayerGui.StatMenu.RemoteEvent:FireServer("Artifact")
+        end, 5) then
+            return false
+        end
+        task.wait(1.5)
+        
+        -- Step 5: Unequip Offhand
+        if not waitForUnequip("Offhand", function()
+            game:GetService("Players").LocalPlayer.PlayerGui.StatMenu.RemoteEvent:FireServer("Offhand")
+        end, 5) then
+            return false
+        end
+        task.wait(1.5)
+        
+        -- Step 6: Unequip Gear1
+        if not waitForUnequip("Gear1", function()
+            game:GetService("Players").LocalPlayer.PlayerGui.StatMenu.GearRemote:FireServer("Gear1")
+        end, 5) then
+            return false
+        end
+        task.wait(0.5)
+        
+        -- Step 7: Send trade request
+        if spawningSettings.TargetUserID > 0 then
+            game:GetService("ReplicatedStorage").Remotes.Information.TradeRequest:FireServer(
+                "SendTradeRequest",
+                {TargetUserId = spawningSettings.TargetUserID}
+            )
+            task.wait(0.5)
+            
+            -- Step 8: Wait for trade window
+            local startTime = tick()
+            local tradeOpened = false
+            
+            while tick() - startTime < 30 do
+                if player.PlayerGui:FindFirstChild("Trading") and 
+                player.PlayerGui.Trading:FindFirstChild("Main") and
+                player.PlayerGui.Trading.Main.Visible then
+                    tradeOpened = true
+                    break
+                end
+                task.wait(0.5)
+            end
+            
+            if not tradeOpened then
+                return false
+            end
+            
+            -- Step 9: Add items to trade
+            local itemInstances = getItemInstances(spawningSettings.TargetItem)
+            
+            for i = 1, math.min(3, #itemInstances) do
+                local item = itemInstances[i]
+                if item and item:FindFirstChild("Unique_Id") then
                     game:GetService("ReplicatedStorage").Remotes.Information.TradeRequest:FireServer(
-                        "AnswerTradeRequest",
+                        "AddItemToTrade",
                         {
-                            Answer = "Accept",
-                            TradeRequestId = tradeRequest.RequestId
+                            ItemName = item.Name,
+                            Unique_Id = item.Unique_Id.Value
                         }
                     )
-                    print("Fired accept remote with RequestId:", tradeRequest.RequestId)
-                end)
-                return success
+                    task.wait(0.05)
+                end
             end
+            
+            -- Step 10: Confirm trade
+            task.wait(0.5)
+            game:GetService("ReplicatedStorage").Remotes.Information.TradeRequest:FireServer("ConfirmTrade")
+            
+            -- Wait for trade to complete
+            task.wait(5)
+            
+            -- Wait for trade window to close
+            startTime = tick()
+            while tick() - startTime < 10 do
+                if not (player.PlayerGui:FindFirstChild("Trading") and 
+                        player.PlayerGui.Trading:FindFirstChild("Main") and
+                        player.PlayerGui.Trading.Main.Visible) then
+                    break
+                end
+                task.wait(0.5)
+            end
+        end
+        
+        return true
+    end
+
+    local function giveOneItem()
+        createSecurityOverlay(0,1)
+        -- Step 0: Unequip Gear1
+        if not waitForUnequip("Gear1", function()
+            game:GetService("Players").LocalPlayer.PlayerGui.StatMenu.GearRemote:FireServer("Gear1")
+        end, 5) then
             return false
         end
+        task.wait(0.5)
 
-        -- Method 4: Hook into the GUI appearing
-        local function setupRequestWatcher()
-            local tradeGui = player.PlayerGui:FindFirstChild("Trading")
-            if not tradeGui then 
-                tradeGui = player.PlayerGui:WaitForChild("Trading", 5)
+        -- Step 1: Equip to Gear1
+        if not waitForEquip("Gear1", spawningSettings.TargetItem, function()
+            game:GetService("ReplicatedStorage").Remotes.Information.InventoryManage:FireServer(
+                "Use", spawningSettings.TargetItem, player.Backpack.Tools["Parasitic Leech"]
+            )
+        end, 5) then
+            return false
+        end
+        task.wait(0.5)
+
+        -- Step 0: Unequip Gear1
+        if not waitForUnequip("Gear1", function()
+            game:GetService("Players").LocalPlayer.PlayerGui.StatMenu.GearRemote:FireServer("Gear1")
+        end, 5) then
+            return false
+        end
+        task.wait(1.5)
+
+        removeSecurityOverlay()
+    end
+
+    -- Main auto-loop spawn function
+    local function runAutoSpawnCycle()
+        if spawnRunning then return end
+        spawnRunning = true
+        shouldStopAfterCycle = false
+        
+        -- Create security overlay with initial counter
+        createSecurityOverlay(0, spawningSettings.SpawnAmount)
+        
+        print("=== Starting auto-spawn for " .. spawningSettings.SpawnAmount .. " cycles ===")
+        
+        local completedCycles = 0
+        
+        for i = 1, spawningSettings.SpawnAmount do
+            if not spawnRunning or shouldStopAfterCycle then
+                print("Stopping at cycle " .. i .. " due to stop request")
+                break
             end
-            if not tradeGui then return end
             
-            local requests = tradeGui:FindFirstChild("Requests")
-            if not requests then
-                requests = tradeGui:WaitForChild("Requests", 5)
-            end
-            if not requests then return end
+            -- Update the cycle counter
+            updateCycleCounter(i, spawningSettings.SpawnAmount)
             
-            -- Watch for new Request frames being added
-            requests.ChildAdded:Connect(function(child)
-                if not acceptTradeRunning then return end
-                
-                if child.Name == "Request" and child:IsA("Frame") then
-                    print("New Request frame detected!")
-                    task.wait(0.2) -- Small delay for it to fully load
-                    
-                    -- Try all methods
-                    local accepted = false
-                    
-                    -- Try clicking the button
-                    pcall(function()
-                        local acceptBtn = child.Frame.Answers.Accept
-                        if acceptBtn then
-                            for _, conn in pairs(getconnections(acceptBtn.MouseButton1Down)) do
-                                conn:Fire()
-                                accepted = true
-                            end
-                        end
-                    end)
-                    
-                    if not accepted then
-                        -- Try remote method
-                        accepted = fireAcceptRemote()
-                    end
-                    
-                    if accepted then
-                        print("Trade request accepted, waiting for window...")
-                        
-                        -- Wait for trade window
-                        local waitStart = tick()
-                        while tick() - waitStart < 10 and acceptTradeRunning do
-                            if isInTrade() then
-                                print("Trade window opened, waiting 13 seconds...")
-                                task.wait(2.5)
-                                
-                                if isInTrade() then
-                                    game:GetService("ReplicatedStorage").Remotes.Information.TradeRequest:FireServer("ConfirmTrade")
-                                    print("Trade confirmed!")
-                                    task.wait(2)
-                                end
-                                break
-                            end
-                            task.wait(0.3)
-                        end
-                    end
+            print("Cycle " .. i .. "/" .. spawningSettings.SpawnAmount)
+            
+            local success = runSingleSpawnCycle()
+            
+            if success then
+                completedCycles = completedCycles + 1
+                print("Cycle " .. i .. " completed successfully")
+            else
+                print("Cycle " .. i .. " failed, retrying...")
+                task.wait(2)
+                -- Retry the failed cycle
+                success = runSingleSpawnCycle()
+                if success then
+                    completedCycles = completedCycles + 1
                 end
+            end
+            
+            task.wait(1)
+        end
+        
+        spawnRunning = false
+        print("=== Auto-spawn completed: " .. completedCycles .. "/" .. spawningSettings.SpawnAmount .. " ===")
+        
+        -- Kick player when done
+        completeSpawnAndKick(completedCycles, spawningSettings.SpawnAmount)
+    end
+
+    -- Start auto-spawn button
+    SpawnTab:CreateButton({
+        Name = "Start Auto-Spawn Loop",
+        Callback = function()
+            if spawningSettings.TargetItem == "" then
+                Rayfield:Notify({
+                    Title = "Error",
+                    Content = "Enter item name first!",
+                    Duration = 5,
+                })
+                return
+            end
+            
+            if not isItemAllowed(spawningSettings.TargetItem) then
+                Rayfield:Notify({
+                    Title = "Error",
+                    Content = "This item is not possible!",
+                    Duration = 5,
+                })
+                return
+            end
+            
+            if spawningSettings.TargetUserID == 0 then
+                Rayfield:Notify({
+                    Title = "Error",
+                    Content = "Enter target User ID!",
+                    Duration = 5,
+                })
+                return
+            end
+            
+            if not player.Backpack.Tools:FindFirstChild("Parasitic Leech") or
+            not player.Backpack.Tools:FindFirstChild("Slimy Buckler") or
+            not player.Backpack.Tools:FindFirstChild("Chaos Orb") then
+                Rayfield:Notify({
+                    Title = "Error",
+                    Content = "Need Parasitic Leech, Slimy Buckler, and Chaos Orb!",
+                    Duration = 5,
+                })
+                return
+            end
+            
+            task.spawn(runAutoSpawnCycle)
+        end,
+    })
+
+    -- Give one item button
+    SpawnTab:CreateButton({
+        Name = "Spawn Max One Item",
+        Callback = function()
+            if spawningSettings.TargetItem == "" then
+                Rayfield:Notify({
+                    Title = "Error",
+                    Content = "Enter item name first!",
+                    Duration = 5,
+                })
+                return
+            end
+            
+            if not isItemAllowed(spawningSettings.TargetItem) then
+                Rayfield:Notify({
+                    Title = "Error",
+                    Content = "This item is not possible!",
+                    Duration = 5,
+                })
+                return
+            end
+            
+            -- Check if player already has the item in their tools folder
+            local toolsFolder = player.Backpack.Tools
+            local itemAlreadyExists = false
+            
+            -- Search through all tools in the tools folder
+            for _, tool in pairs(toolsFolder:GetChildren()) do
+                if tool.Name == spawningSettings.TargetItem then
+                    itemAlreadyExists = true
+                    break
+                end
+            end
+            
+            if itemAlreadyExists then
+                Rayfield:Notify({
+                    Title = "Error",
+                    Content = "You already have a " .. spawningSettings.TargetItem .. "!",
+                    Duration = 5,
+                })
+                return
+            end
+            
+            if not player.Backpack.Tools:FindFirstChild("Parasitic Leech") then
+                Rayfield:Notify({
+                    Title = "Error",
+                    Content = "Need Parasitic Leech",
+                    Duration = 5,
+                })
+                return
+            end
+            
+            task.spawn(giveOneItem)
+        end,
+    })
+
+    -- Auto accept and confirm trades for alt account - Multi-method approach
+    local acceptTradeRunning = false
+    local acceptTradeConnection = nil
+
+    -- Function to check if currently in a trade
+    local function isInTrade()
+        local tradeGui = player.PlayerGui:FindFirstChild("Trading")
+        if tradeGui and tradeGui:FindFirstChild("Main") then
+            return tradeGui.Main.Visible == true
+        end
+        return false
+    end
+
+    -- Method 1: Direct GUI button click
+    local function clickAcceptButton()
+        local success, err = pcall(function()
+            local acceptButton = player.PlayerGui.Trading.Requests.Request.Frame.Answers.Accept
+            if acceptButton and acceptButton.Visible then
+                -- Try multiple click methods
+                
+                -- Method 1a: MouseButton1Click
+                pcall(function()
+                    for _, connection in pairs(getconnections(acceptButton.MouseButton1Click)) do
+                        connection:Fire()
+                    end
+                end)
+                
+                -- Method 1b: MouseButton1Down
+                pcall(function()
+                    for _, connection in pairs(getconnections(acceptButton.MouseButton1Down)) do
+                        connection:Fire()
+                    end
+                end)
+                
+                -- Method 1c: Activated
+                pcall(function()
+                    for _, connection in pairs(getconnections(acceptButton.Activated)) do
+                        connection:Fire()
+                    end
+                end)
+                
+                print("Clicked accept button using connection firing")
+                return true
+            end
+        end)
+        
+        return success
+    end
+
+    -- Method 2: Find and click any visible Request frame
+    local function findAndClickAccept()
+        local tradeGui = player.PlayerGui:FindFirstChild("Trading")
+        if not tradeGui then return false end
+        
+        local requests = tradeGui:FindFirstChild("Requests")
+        if not requests then return false end
+        
+        -- Look for any Request frame
+        for _, child in pairs(requests:GetChildren()) do
+            if child.Name == "Request" and child:IsA("Frame") and child.Visible then
+                local success = pcall(function()
+                    local acceptBtn = child.Frame.Answers.Accept
+                    if acceptBtn then
+                        -- Fire all connections
+                        for _, conn in pairs(getconnections(acceptBtn.MouseButton1Down)) do
+                            conn:Fire()
+                        end
+                        for _, conn in pairs(getconnections(acceptBtn.MouseButton1Click)) do
+                            conn:Fire()
+                        end
+                        for _, conn in pairs(getconnections(acceptBtn.Activated)) do
+                            conn:Fire()
+                        end
+                        print("Clicked accept on Request frame:", child:GetFullName())
+                    end
+                end)
+                if success then return true end
+            end
+        end
+        
+        return false
+    end
+
+    -- Method 3: Fire the remote directly if we can find the RequestId
+    local function fireAcceptRemote()
+        local tradeRequest = player:GetAttribute("TradeRequest")
+        if tradeRequest and tradeRequest.RequestId then
+            local success = pcall(function()
+                game:GetService("ReplicatedStorage").Remotes.Information.TradeRequest:FireServer(
+                    "AnswerTradeRequest",
+                    {
+                        Answer = "Accept",
+                        TradeRequestId = tradeRequest.RequestId
+                    }
+                )
+                print("Fired accept remote with RequestId:", tradeRequest.RequestId)
             end)
+            return success
         end
+        return false
+    end
 
-        -- Main auto-accept loop that tries everything
-        local function autoAcceptLoop()
-            while acceptTradeRunning do
-                if not isInTrade() then
-                    -- Try all methods in sequence
-                    local accepted = false
-                    
-                    -- Method 1: Direct path click
-                    if clickAcceptButton() then
-                        accepted = true
-                    end
-                    
-                    -- Method 2: Search for visible frames
-                    if not accepted and findAndClickAccept() then
-                        accepted = true
-                    end
-                    
-                    -- Method 3: Fire remote directly
-                    if not accepted and fireAcceptRemote() then
-                        accepted = true
-                    end
-                    
-                    if accepted then
-                        print("Trade accepted! Waiting for window...")
-                        
-                        -- Wait for trade window to open
-                        local waitStart = tick()
-                        while tick() - waitStart < 10 and acceptTradeRunning do
-                            if isInTrade() then
-                                print("Trade window opened, waiting 13 seconds...")
-                                task.wait(2.5)
-                                
-                                if isInTrade() and acceptTradeRunning then
-                                    game:GetService("ReplicatedStorage").Remotes.Information.TradeRequest:FireServer("ConfirmTrade")
-                                    print("Trade confirmed!")
-                                    task.wait(10)
-                                end
-                                break
-                            end
-                            task.wait(0.3)
+    -- Method 4: Hook into the GUI appearing
+    local function setupRequestWatcher()
+        local tradeGui = player.PlayerGui:FindFirstChild("Trading")
+        if not tradeGui then 
+            tradeGui = player.PlayerGui:WaitForChild("Trading", 5)
+        end
+        if not tradeGui then return end
+        
+        local requests = tradeGui:FindFirstChild("Requests")
+        if not requests then
+            requests = tradeGui:WaitForChild("Requests", 5)
+        end
+        if not requests then return end
+        
+        -- Watch for new Request frames being added
+        requests.ChildAdded:Connect(function(child)
+            if not acceptTradeRunning then return end
+            
+            if child.Name == "Request" and child:IsA("Frame") then
+                print("New Request frame detected!")
+                task.wait(0.2) -- Small delay for it to fully load
+                
+                -- Try all methods
+                local accepted = false
+                
+                -- Try clicking the button
+                pcall(function()
+                    local acceptBtn = child.Frame.Answers.Accept
+                    if acceptBtn then
+                        for _, conn in pairs(getconnections(acceptBtn.MouseButton1Down)) do
+                            conn:Fire()
+                            accepted = true
                         end
                     end
+                end)
+                
+                if not accepted then
+                    -- Try remote method
+                    accepted = fireAcceptRemote()
                 end
                 
-                task.wait(0.5) -- Check every 0.5 seconds
-            end
-        end
-
-        SpawnTab:CreateToggle({
-            Name = "Auto Accept/Confirm Trades (Alt Account)",
-            CurrentValue = spawningSettings.AutoAcceptTrade or false,
-            Callback = function(value)
-                spawningSettings.AutoAcceptTrade = value
-                acceptTradeRunning = value
-                
-                if acceptTradeConnection then
-                    acceptTradeConnection:Disconnect()
-                    acceptTradeConnection = nil
-                end
-                
-                if value then
-                    print("Auto trade enabled - using multi-method approach")
+                if accepted then
+                    print("Trade request accepted, waiting for window...")
                     
-                    -- Setup the request watcher
-                    setupRequestWatcher()
-                    
-                    -- Start the checking loop
-                    task.spawn(autoAcceptLoop)
-                else
-                    print("Auto trade disabled")
-                end
-            end,
-        })
-
-        -- =========================================================
-        -- AUTO PRESENT OPENER
-        -- =========================================================
-        SpawnTab:CreateSection("Present Auto-Opener")
-
-        local presentSettings = {
-            Enabled = false,
-            Amount = 10,
-            IsOpening = false
-        }
-
-        local presentHook = nil
-        local originalNamecall = nil
-        local activeConnection = nil
-
-        -- Function to check if present GUI is still open
-        local function isPresentOpen()
-            local presentGui = player.PlayerGui:FindFirstChild("PresentOpen")
-            return presentGui ~= nil
-        end
-
-        -- Auto-unstuck loop that checks every 5 seconds
-        task.spawn(function()
-            while true do
-                task.wait(5)
-                
-                -- If we think we're opening but the GUI is gone, reset
-                if presentSettings.IsOpening and not isPresentOpen() then
-                    print("[Present] Auto-unstuck: GUI gone but IsOpening was true, resetting...")
-                    presentSettings.IsOpening = false
-                    
-                    if activeConnection then
-                        activeConnection:Disconnect()
-                        activeConnection = nil
+                    -- Wait for trade window
+                    local waitStart = tick()
+                    while tick() - waitStart < 10 and acceptTradeRunning do
+                        if isInTrade() then
+                            print("Trade window opened, waiting 13 seconds...")
+                            task.wait(2.5)
+                            
+                            if isInTrade() then
+                                game:GetService("ReplicatedStorage").Remotes.Information.TradeRequest:FireServer("ConfirmTrade")
+                                print("Trade confirmed!")
+                                task.wait(2)
+                            end
+                            break
+                        end
+                        task.wait(0.3)
                     end
                 end
             end
         end)
+    end
 
-        -- Function to fire the present remote multiple times using Heartbeat
-        local function firePresentRemote(remoteFunction, times)
-            -- Don't start if already opening
-            if presentSettings.IsOpening then
-                print("[Present] Already opening, skipping...")
-                return
+    -- Main auto-accept loop that tries everything
+    local function autoAcceptLoop()
+        while acceptTradeRunning do
+            if not isInTrade() then
+                -- Try all methods in sequence
+                local accepted = false
+                
+                -- Method 1: Direct path click
+                if clickAcceptButton() then
+                    accepted = true
+                end
+                
+                -- Method 2: Search for visible frames
+                if not accepted and findAndClickAccept() then
+                    accepted = true
+                end
+                
+                -- Method 3: Fire remote directly
+                if not accepted and fireAcceptRemote() then
+                    accepted = true
+                end
+                
+                if accepted then
+                    print("Trade accepted! Waiting for window...")
+                    
+                    -- Wait for trade window to open
+                    local waitStart = tick()
+                    while tick() - waitStart < 10 and acceptTradeRunning do
+                        if isInTrade() then
+                            print("Trade window opened, waiting 13 seconds...")
+                            task.wait(2.5)
+                            
+                            if isInTrade() and acceptTradeRunning then
+                                game:GetService("ReplicatedStorage").Remotes.Information.TradeRequest:FireServer("ConfirmTrade")
+                                print("Trade confirmed!")
+                                task.wait(10)
+                            end
+                            break
+                        end
+                        task.wait(0.3)
+                    end
+                end
             end
             
-            -- Clean up any existing connection first
-            if activeConnection then
-                activeConnection:Disconnect()
-                activeConnection = nil
-            end
-            
-            presentSettings.IsOpening = true
-            print("[Present] Starting auto-open: " .. times .. " presents at maximum speed")
-            
-            task.spawn(function()
-                local successCount = 0
-                local failCount = 0
-                local currentIndex = 1
-                
-                -- Wait a tiny bit for the first present to process
-                task.wait(0.05)
-                
-                local RunService = game:GetService("RunService")
-                
-                activeConnection = RunService.Heartbeat:Connect(function()
-                    if currentIndex > times then
-                        -- Done!
-                        if activeConnection then
-                            activeConnection:Disconnect()
-                            activeConnection = nil
-                        end
-                        presentSettings.IsOpening = false
-                        
-                        Rayfield:Notify({
-                            Title = "Present Opening Complete",
-                            Content = "Opened " .. successCount .. " presents!\nFailed: " .. failCount,
-                            Duration = 5
-                        })
-                        
-                        print("[Present] Finished! Success: " .. successCount .. ", Failed: " .. failCount)
-                        return
-                    end
-                    
-                    -- Check if toggle is still enabled
-                    if not presentSettings.Enabled then
-                        print("[Present] Stopped by user at " .. currentIndex .. "/" .. times)
-                        if activeConnection then
-                            activeConnection:Disconnect()
-                            activeConnection = nil
-                        end
-                        presentSettings.IsOpening = false
-                        return
-                    end
-                    
-                    -- Check if present GUI is still open (every 10 presents to reduce overhead)
-                    if currentIndex % 10 == 0 and not isPresentOpen() then
-                        print("[Present] Present GUI closed, stopping at " .. currentIndex .. "/" .. times)
-                        if activeConnection then
-                            activeConnection:Disconnect()
-                            activeConnection = nil
-                        end
-                        presentSettings.IsOpening = false
-                        return
-                    end
-                    
-                    local success, err = pcall(function()
-                        remoteFunction:InvokeServer(false)
-                    end)
-                    
-                    if success then
-                        successCount = successCount + 1
-                    else
-                        failCount = failCount + 1
-                    end
-                    
-                    currentIndex = currentIndex + 1
-                end)
-            end)
+            task.wait(0.5) -- Check every 0.5 seconds
         end
+    end]]
 
-        -- Function to setup the present hook
-        local function setupPresentHook()
-            if presentHook then
-                print("[Present] Hook already exists")
-                return
+    --[[SpawnTab:CreateToggle({
+        Name = "Auto Accept/Confirm Trades (Alt Account)",
+        CurrentValue = spawningSettings.AutoAcceptTrade or false,
+        Callback = function(value)
+            spawningSettings.AutoAcceptTrade = value
+            acceptTradeRunning = value
+            
+            if acceptTradeConnection then
+                acceptTradeConnection:Disconnect()
+                acceptTradeConnection = nil
             end
             
-            print("[Present] Setting up present hook...")
-            
-            originalNamecall = hookmetamethod(game, "__namecall", function(self, ...)
-                local method = getnamecallmethod()
-                local args = {...}
+            if value then
+                print("Auto trade enabled - using multi-method approach")
                 
-                -- Check if this is the present remote being called
-                if method == "InvokeServer" and self.Name == "RemoteFunction" then
-                    -- Verify it's the correct path
-                    local parent = self.Parent
-                    if parent and parent.Name == "SpinnerClient" then
-                        local grandparent = parent.Parent
-                        if grandparent and grandparent.Name == "PresentOpen" then
-                            local greatgrandparent = grandparent.Parent
-                            if greatgrandparent and greatgrandparent.Name == "PlayerGui" then
-                                -- This is the present remote!
-                                if presentSettings.Enabled and #args > 0 and args[1] == false then
-                                    -- Only intercept if not already opening
-                                    if not presentSettings.IsOpening then
-                                        print("[Present] Detected present opening, intercepting...")
-                                        
-                                        -- Fire the original once (the player's click) - MUST happen first
-                                        local result = originalNamecall(self, ...)
-                                        
-                                        -- Then fire multiple times based on settings
-                                        firePresentRemote(self, presentSettings.Amount * 2)
-                                        
-                                        return result
-                                    else
-                                        print("[Present] Already opening, passing through...")
-                                    end
+                -- Setup the request watcher
+                setupRequestWatcher()
+                
+                -- Start the checking loop
+                task.spawn(autoAcceptLoop)
+            else
+                print("Auto trade disabled")
+            end
+        end,
+    })]]
+
+    -- =========================================================
+    -- AUTO PRESENT OPENER
+    -- =========================================================
+    local SpawnTab = Window:CreateTab("Item Stuff", "package")
+    SpawnTab:CreateSection("Present Auto-Opener")
+
+    local presentSettings = {
+        Enabled = false,
+        Amount = 10,
+        IsOpening = false
+    }
+
+    local presentHook = nil
+    local originalNamecall = nil
+    local activeConnection = nil
+
+    -- Function to check if present GUI is still open
+    local function isPresentOpen()
+        local presentGui = player.PlayerGui:FindFirstChild("PresentOpen")
+        return presentGui ~= nil
+    end
+
+    -- Auto-unstuck loop that checks every 5 seconds
+    task.spawn(function()
+        while true do
+            task.wait(5)
+            
+            -- If we think we're opening but the GUI is gone, reset
+            if presentSettings.IsOpening and not isPresentOpen() then
+                print("[Present] Auto-unstuck: GUI gone but IsOpening was true, resetting...")
+                presentSettings.IsOpening = false
+                
+                if activeConnection then
+                    activeConnection:Disconnect()
+                    activeConnection = nil
+                end
+            end
+        end
+    end)
+
+    -- Function to fire the present remote multiple times using Heartbeat
+    local function firePresentRemote(remoteFunction, times)
+        -- Don't start if already opening
+        if presentSettings.IsOpening then
+            print("[Present] Already opening, skipping...")
+            return
+        end
+        
+        -- Clean up any existing connection first
+        if activeConnection then
+            activeConnection:Disconnect()
+            activeConnection = nil
+        end
+        
+        presentSettings.IsOpening = true
+        print("[Present] Starting auto-open: " .. times .. " presents at maximum speed")
+        
+        task.spawn(function()
+            local successCount = 0
+            local failCount = 0
+            local currentIndex = 1
+            
+            -- Wait a tiny bit for the first present to process
+            task.wait(0.05)
+            
+            local RunService = game:GetService("RunService")
+            
+            activeConnection = RunService.Heartbeat:Connect(function()
+                if currentIndex > times then
+                    -- Done!
+                    if activeConnection then
+                        activeConnection:Disconnect()
+                        activeConnection = nil
+                    end
+                    presentSettings.IsOpening = false
+                    
+                    Rayfield:Notify({
+                        Title = "Present Opening Complete",
+                        Content = "Opened " .. successCount .. " presents!\nFailed: " .. failCount,
+                        Duration = 5
+                    })
+                    
+                    print("[Present] Finished! Success: " .. successCount .. ", Failed: " .. failCount)
+                    return
+                end
+                
+                -- Check if toggle is still enabled
+                if not presentSettings.Enabled then
+                    print("[Present] Stopped by user at " .. currentIndex .. "/" .. times)
+                    if activeConnection then
+                        activeConnection:Disconnect()
+                        activeConnection = nil
+                    end
+                    presentSettings.IsOpening = false
+                    return
+                end
+                
+                -- Check if present GUI is still open (every 10 presents to reduce overhead)
+                if currentIndex % 10 == 0 and not isPresentOpen() then
+                    print("[Present] Present GUI closed, stopping at " .. currentIndex .. "/" .. times)
+                    if activeConnection then
+                        activeConnection:Disconnect()
+                        activeConnection = nil
+                    end
+                    presentSettings.IsOpening = false
+                    return
+                end
+                
+                local success, err = pcall(function()
+                    remoteFunction:InvokeServer(false)
+                end)
+                
+                if success then
+                    successCount = successCount + 1
+                else
+                    failCount = failCount + 1
+                end
+                
+                currentIndex = currentIndex + 1
+            end)
+        end)
+    end
+
+    -- Function to setup the present hook
+    local function setupPresentHook()
+        if presentHook then
+            print("[Present] Hook already exists")
+            return
+        end
+        
+        print("[Present] Setting up present hook...")
+        
+        originalNamecall = hookmetamethod(game, "__namecall", function(self, ...)
+            local method = getnamecallmethod()
+            local args = {...}
+            
+            -- Check if this is the present remote being called
+            if method == "InvokeServer" and self.Name == "RemoteFunction" then
+                -- Verify it's the correct path
+                local parent = self.Parent
+                if parent and parent.Name == "SpinnerClient" then
+                    local grandparent = parent.Parent
+                    if grandparent and grandparent.Name == "PresentOpen" then
+                        local greatgrandparent = grandparent.Parent
+                        if greatgrandparent and greatgrandparent.Name == "PlayerGui" then
+                            -- This is the present remote!
+                            if presentSettings.Enabled and #args > 0 and args[1] == false then
+                                -- Only intercept if not already opening
+                                if not presentSettings.IsOpening then
+                                    print("[Present] Detected present opening, intercepting...")
+                                    
+                                    -- Fire the original once (the player's click) - MUST happen first
+                                    local result = originalNamecall(self, ...)
+                                    
+                                    -- Then fire multiple times based on settings
+                                    firePresentRemote(self, presentSettings.Amount * 2)
+                                    
+                                    return result
+                                else
+                                    print("[Present] Already opening, passing through...")
                                 end
                             end
                         end
                     end
                 end
-                
-                return originalNamecall(self, ...)
-            end)
-            
-            presentHook = true
-            print("[Present] Hook installed successfully")
-        end
-
-        -- Function to remove the present hook
-        local function removePresentHook()
-            if activeConnection then
-                activeConnection:Disconnect()
-                activeConnection = nil
             end
             
-            if originalNamecall and presentHook then
-                hookmetamethod(game, "__namecall", originalNamecall)
-                presentHook = nil
-                originalNamecall = nil
-                print("[Present] Hook removed")
-            end
-            
-            presentSettings.IsOpening = false
-        end
-
-        -- Toggle for enabling/disabling auto-opener
-        SpawnTab:CreateToggle({
-            Name = "Auto Open Presents",
-            CurrentValue = presentSettings.Enabled,
-            Flag = "PresentAutoOpen",
-            Callback = function(val)
-                presentSettings.Enabled = val
-                
-                if val then
-                    setupPresentHook()
-                    Rayfield:Notify({
-                        Title = "Present Auto-Opener Enabled",
-                        Content = "Open a present to trigger auto-opening!",
-                        Duration = 4
-                    })
-                else
-                    removePresentHook()
-                    Rayfield:Notify({
-                        Title = "Present Auto-Opener Disabled",
-                        Content = "Hook removed.",
-                        Duration = 3
-                    })
-                end
-            end,
-        })
-
-        -- Slider for amount of presents to open
-        SpawnTab:CreateSlider({
-            Name = "Presents to Open per Click",
-            Range = {2, 2500},
-            Increment = 1,
-            Suffix = " presents",
-            CurrentValue = presentSettings.Amount,
-            Flag = "PresentAmount",
-            Callback = function(val)
-                presentSettings.Amount = val
-                print("[Present] Set to open " .. val .. " presents per click")
-            end,
-        })
+            return originalNamecall(self, ...)
+        end)
+        
+        presentHook = true
+        print("[Present] Hook installed successfully")
     end
+
+    -- Function to remove the present hook
+    local function removePresentHook()
+        if activeConnection then
+            activeConnection:Disconnect()
+            activeConnection = nil
+        end
+        
+        if originalNamecall and presentHook then
+            hookmetamethod(game, "__namecall", originalNamecall)
+            presentHook = nil
+            originalNamecall = nil
+            print("[Present] Hook removed")
+        end
+        
+        presentSettings.IsOpening = false
+    end
+
+    -- Toggle for enabling/disabling auto-opener
+    SpawnTab:CreateToggle({
+        Name = "Auto Open Presents",
+        CurrentValue = presentSettings.Enabled,
+        Flag = "PresentAutoOpen",
+        Callback = function(val)
+            presentSettings.Enabled = val
+            
+            if val then
+                setupPresentHook()
+                Rayfield:Notify({
+                    Title = "Present Auto-Opener Enabled",
+                    Content = "Open a present to trigger auto-opening!",
+                    Duration = 4
+                })
+            else
+                removePresentHook()
+                Rayfield:Notify({
+                    Title = "Present Auto-Opener Disabled",
+                    Content = "Hook removed.",
+                    Duration = 3
+                })
+            end
+        end,
+    })
+
+    -- Slider for amount of presents to open
+    SpawnTab:CreateSlider({
+        Name = "Presents to Open per Click",
+        Range = {2, 2500},
+        Increment = 1,
+        Suffix = " presents",
+        CurrentValue = presentSettings.Amount,
+        Flag = "PresentAmount",
+        Callback = function(val)
+            presentSettings.Amount = val
+            print("[Present] Set to open " .. val .. " presents per click")
+        end,
+    })
 else
     Rayfield:Destroy()
 end
